@@ -1,0 +1,9 @@
+->How to handle rest api exceptions
+Create a custom exception class with @ResponseBody annotation and throw this exception
+Create a custom class and Extend ResponseEntityExceptionHandler and override required methods to handle exceptions
+
+->How to validate RESTAPI inputs
+add dependency called started-validation
+
+add @Valid in the method arugment of controller
+add validations like @Size @NotNull @DatePast in the Bean Class 

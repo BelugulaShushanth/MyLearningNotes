@@ -1,0 +1,464 @@
+MICROSERVICES WITH SPRING CLOUD
+
+What is a Monolith Architecture?
+Answer: 
+Monolithic Architecture is designed to be self-contained, wherein the program's components or functions 
+are tightly coupled rather than loosely coupled, like in modular software programs. 
+In a monolithic architecture, each component and its associated components must all be present 
+for code to be executed or compiled and for the software to run.
+
+Monolithic applications are single-tiered, which means multiple components are combined into one 
+large application. Consequently, they tend to have large codebases, which can be cumbersome to manage over time.
+
+
+Why microservices are needed  ? 
+Answer: 
+Monolith Architecture is not good for a large scale application .
+Since all code is present in a single project it is difficult to debug or maintain the code.
+As the code is huge since everything is maintained in a single project it becomes difficult 
+for a new developer to understand the code.
+If a developer makes a small change in the application he needs to compile all code base and redeploy the application
+this makes continuous or regular deployments difficult
+If we want to scale up a particular service then we need to scale up the entire application
+which is costly and not recomended.
+
+This is the reason why microservices are needed.
+
+What is a microservices ?
+Answer:
+In software development, microservices are an architectural style that structure applications 
+as a collection of loosely connected services, making it easier for developers to build and scale apps. 
+The microservices architectural approach differs from the conventional monolithic style.
+
+Microservices bring multiple benefits to teams like :
+
+-> Dynamic Scalability
+-> Faster development
+-> Improved data security
+-> Better data governance
+-> The opportunity to become “language and technology agnostic”
+-> Enables to adapt new technologies and processes
+
+Microservices in the Cloud (AWS and Azure):
+
+Perhaps the cloud is the most critical component of the microservices architecture. 
+Developers use Docker containers for packaging and deploying microservices in 
+private and hybrid cloud environments (more on this later.) Microservices and cloud environments 
+are a match made in technological heaven, facilitating quick scalability and speed-to-market. 
+
+Here are some benefits:
+
+Microservices run on different servers, but developers can access them from one cloud location.
+Developers make back-end changes to microservices via the cloud without affecting other microservices. 
+If one microservice fails, the entire app remains unaffected. 
+Developers create and scale microservices from any location in the world. 
+Various platforms automate many of the processes associated with microservices in the cloud. 
+However, there are two developers should consider:  
+
+Amazon Web Services (AWS)
+Microsoft Azure
+Once up and running, these systems require little human intervention from developers unless debugging problems occur. 
+
+Challeges with microservices:
+
+1.Bounded Context -> What is the right context or boundary for the microservice
+2.Configuartion Management -> we may develop 100 MICROSERVICES and a lot of environments how to simplify and maintain the configurations
+3.Dynamic Scale Up and Scale Down, and Dynamic distribute the load on the active microservices
+4.Visibiltiy -> A great visibility into all the microservices a simple request might involve 10 Microservices
+				How to determine all microservices are up and running
+5.Pack of cards -> How to avoid developing microservices which depends on a single microservice
+				How to avoid if one microservice is down taking down entire microservices and how to implement fault tolerence
+
+
+Making a Spring Boot application to be cloud enabled using Spring Cloud:
+
+Spring Cloud:
+
+Spring Cloud provides tools for developers to quickly build some of the common patterns in distributed systems 
+(e.g. configuration management, service discovery, circuit breakers, intelligent routing, micro-proxy, control bus, 
+one-time tokens, global locks, leadership election, distributed sessions, cluster state). 
+Coordination of distributed systems leads to boiler plate patterns, 
+and using Spring Cloud developers can quickly stand up services and applications that implement those patterns. 
+They will work well in any distributed environment, including the developer’s own laptop, bare metal data centres,
+ and managed platforms such as Cloud Foundry.	
+
+To resolve the challeges with developing microservices and to make our project cloud ready
+Spring cloud provides few pre built projects to use in our project:
+
+Challengs to resolve by using Spring cloud are:
+1.Centralized Microservice Configuration with Spring Cloud Config Server
+2.Simplify communication with other Microservices using Feign REST Client
+3.Implement dynamic scaling using Eureka Naming Server and SpringCloud Load Balancer OR Ribbon(DEPRICATED)
+4.Implement API Gateway with Spring cloud API gateway OR Zuul(DEPRICATED)
+5.Implement Fault Tolerance with Resilience4j OR Hystrix(DEPRICATED)
+6.Implement Distributed tracing with Spring Cloud Sleuth and Zipkin
+7.Using Spring Cloud Bus to exchange messages about Configuration updates
+
+Spring Cloud All Main Projects are (find here https://spring.io/projects/spring-cloud )
+STEP BY STEP DOC https://github.com/in28minutes/spring-microservices-v3/tree/main/03.microservices/01-step-by-step-changes
+
+=>1.Centralized Microservice Configuration with Spring Cloud Config Server:
+
+When we have a lot of microservices it becomes difficult to managage the configuration properties of all applications
+That's where spring cloud config server comes in
+Spring cloud says that for all applications you should define a centralized config server from where we can fetch 
+configuration properties for a specific application and environment dynamically. And in future if you want to add
+or modify any properties you can just do it in the centralized config server
+And guess what you can version these configuration files using any version control tool like GIT
+
+HOW SPRING CLOUD CONFIG SERVER WORKS:
+Lets assume we have a spring boot app which has different configuration properties like:
+application.properties
+application-dev.properties
+application-prod.properties
+Then you can remove these configurations from the resources folder of the project and move it to the centralized repo
+STEPS to setup spring cloud config server
+
+STEP1:
+Create a git repo of where you can store and maintain your configurations of a project
+but the properties name should be appName.properties or appName-env.properties (env = dev or qa or prod)
+here the appName should be the spring.application.name defined in the project 
+
+STEP2:
+Create a new Spring boot app called config-server and add the Spring cloud config server dependency
+build.gradle: implementation 'org.springframework.cloud:spring-cloud-config-server'
+In the main application add annotation called @EnableConfigServer
+In application.properties of the config server add these below
+spring.application.name=config-server
+spring.cloud.config.server.git.uri=https://github.com/BelugulaShushanth/Cricfizz-Config(GITHUB URI)
+
+STEP3
+In the main Project you can maintain only one application.properties which has 
+spring.application.name=appName
+spring.profiles.active=dev
+spring.config.import=optional:configserver:http://localhost:8888
+spring.cloud.config.profile=dev
+
+when you start the app it will fetch the properties from the configserver which inturn fetches from github
+NOTE: Check the Spring cloud config server architecture here -> Spring-cloud-config-server.png
+
+=>2.Simplify communication with other Microservices using Feign REST Client:
+
+In microservices there may be a 100's of microservices and we might need to call multiple services using RestTemplate
+Implementing RestTemplate to call microservices using RestTemplate takes lot of time to write code and it is tedious
+To simplify calling mircoservices through REST, Spring Cloud has given as a library called Feign REST Client
+Going further we can use Feign client to call mircoservices
+For example we want to call a micrsiervice called otp-service which has below API Endpoint
+  @PostMapping("/api/otp/sendOTP")
+    public OTPBean sendOTP(@RequestParam("mailId") String mailId){
+        return otpServices.sendOTP(mailId);
+    }
+	
+To Call the above end point from our app we need to do below steps
+STEP1: build.gradle: implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+STEP2: In main application add annotation called : @EnableFeignClients
+STEP3: 
+@FeignClient(name="OTP-SERVICE",url="hostname:port")
+public interface OTPClient {
+
+    @PostMapping("/api/otp/sendOTP")
+    OTPBean sendOTP(@RequestParam("mailId") String mailId);
+	
+}
+This is same like creating the the API in controller but in the reverse manner
+
+=>3.Implementing dynamic scaling using Eureka Naming Server and SpringCloud Load Balancer or Ribbon
+
+Eureka Naming server is a server which stores all the URL's of different microservices along with the unique app-name
+For example if we have an app called OTP-SERVICE running on localhost:8091 then we can register this with eureka-server
+and if we want to call OTP-SERVICE we dont need the URL we just need the app name with which eureka fetches the URL
+
+STEP1: Creating Eureka Naming Server
+build.gradle -> implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+In main java file add the annotation called -> @EnableEurekaServer
+application.properties
+server.port=8761
+eureka.client.register-with-eureka=false  // to tell the eureka server to not register it with itself
+eureka.client.fetch-registry=false
+
+STEP2: Registering our application with Eureka server
+build.gradle -> implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+In main java file add the annotation called -> @EnableEurekaClient
+application.properties
+spring.application.name=otp-service
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+
+when you start your application then the application will register with eureka with name otp-service
+
+STEP3: Calling OTP-SERVICE from our Application using feign client and eureka client
+build.gradle -> implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+In main java file add the annotation called -> @EnableEurekaClient
+application.properties
+spring.application.name=app-name
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+@FeignClient(name="OTP-SERVICE")  // url is not required as feign uses eureka naming server to fetch the URL dynamically
+public interface OTPClient {
+
+    @PostMapping("/api/otp/sendOTP")
+    OTPBean sendOTP(@RequestParam("mailId") String mailId);
+	
+}
+
+STEP4: Client Side Load Balancing using Spring Load Balancer
+When you are using eureka client and feign then Spring Load Balancer is configured automatically
+For example OTP-SERVICE is running on to instances localhost:8081, localhost:8082
+then our app which uses feign will automatically configure the load balancer and manages the requests to OTP-SERVICE
+
+NOTE: CHECK THE Architecture HERE: spring-cloud-load-balancing-eureka.png
+
+=>4.Implement API Gateway with Spring cloud Routing API gateway or Zuul(DEPRICATED)
+
+As Zuul is deprecated after spring 2.3 we are using Spring Cloud API Gateway
+An API gateway is an API management tool that sits between a client and a collection of backend services.
+An API gateway acts as a reverse proxy to accept all application programming interface (API) calls, 
+aggregate the various services required to fulfill them, and return the appropriate result.
+
+Spring Cloud API Gateway Implementation:
+
+Follow the below steps to create and use API Gateway
+STEP1:
+build.gradle: 
+implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
+implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+
+STEP2: In Main Application add annotation @EnableEurekaClient
+
+STEP3:
+In application.properties
+spring.application.name=api-gateway
+server.port=8765
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+spring.cloud.gateway.discovery.locator.enabled=true
+spring.cloud.gateway.discovery.locator.lower-case-service-id=true
+
+Start the application
+Now hit the url http://localhost:8765/otp-service/api/otp/sendOTP?mailId=sushanth179@gmail.com
+here API Gateway is running on 8765 and we are mentioning the API Gateway and which service to call
+in this case it is otp-service. Now the API Gateway takes the request and performs REST call 
+to OTP-SERVICE on behalf of us and sends the response back
+Here in API Gateway we can filter out the request like the authenticated and unauthenicated requests
+
+Spring Cloud API Gateway Uses and Features:
+->Simple yet effective way to route to API's
+->Provide cross cutting concerns like Security and Monitoring/Metrics
+	example:
+	@Component
+	public class LoggingFilter implements GlobalFilter {
+
+		private Logger logger = LoggerFactory.getLogger(LoggingFilter.class);
+		
+		@Override
+		public Mono<Void> filter(ServerWebExchange exchange, 
+				GatewayFilterChain chain) {
+			logger.info("Path of the request received -> {}", 
+					exchange.getRequest().getPath());
+			return chain.filter(exchange);
+		}
+	}
+->Built on top of Spring WebFlux ( Reactive Approach)
+->Fetaures: 
+	a)matches routes on any request attribute
+	 example:
+	 application.properties: comment below lines
+	 #spring.cloud.gateway.discovery.locator.enabled=true
+	 #spring.cloud.gateway.discovery.locator.lowerCaseServiceId=true
+	 @Configuration
+	public class ApiGatewayConfiguration {
+		@Bean
+		public RouteLocator gatewayRouter(RouteLocatorBuilder builder) {
+			return builder.routes()
+					.route(p -> p
+							.path("/get")
+							.filters(f -> f
+									.addRequestHeader("MyHeader", "MyURI")
+									.addRequestParameter("Param", "MyValue"))
+							.uri("http://httpbin.org:80"))
+					.route(p -> p.path("/otpService/**")
+							.uri("lb://otp-service"))
+					.build();
+		}
+	}
+	now we can hit this URL:  http://localhost:8765/otpService/api/otp/sendOTP?mailId=sushanth179@gmail.com
+	INSTEAD OF THIS:  http://localhost:8765/otp-service/api/otp/sendOTP?mailId=sushanth179@gmail.com
+	b)Define predicate and filters
+	c)Integrates with spring cloud discovery client(Load Balancing)
+	d)Path Rewriting
+	
+=>5.Implement Fault Tolerance with Resilience4j or Hystrix(DEPRICATED)
+
+Hystrix is depricated after Spring 2.3 so we use resilience4j
+
+What is Fault Tolerance?
+Fault tolerance is the ability of a system to continue functioning despite failures or errors in 
+some of its components. Microservices are an architectural style that divides a complex application into 
+smaller, independent, and loosely coupled services that communicate through APIs.
+
+Resilience4j is a lightweight fault tolerance library designed for functional programming. 
+Resilience4j provides higher-order functions (decorators) to enhance any functional interface, 
+lambda expression or method reference with a Circuit Breaker, Rate Limiter, Retry or Bulkhead. 
+You can stack more than one decorator on any functional interface, lambda expression or method reference.
+The advantage is that you have the choice to select the decorators you need and nothing else.
+
+Consider the below four microservices
+
+	Microservice1 -> Microservice2 -> Microservice3 -> Microservice4 -> Microservice5
+
+Questions: 
+	a)What if one of the microservice is slow or down? -> it impacts the entire chain
+	b)Can we return a fallback response if a service is down ?
+	c)Can we implement a circuit breaker pattern to reduce load ?
+	d)Can we retry request in case of temporary failures ?
+	e)Can we implement rate limiting ? ( number of calls to a Microservice in a period of time)
+Solution: Fault Tolerance framework called Resilience4j
+
+->a)Resilience4j Retry:
+	Resilience4j Retry is used to implement an inline retry which retires the API call for n number of times
+	and also we can configure a fallback method which executes when all n retries fails.
+	
+Follow the below steps to implement Resilience4j Retry in spring boot
+
+STEP1:
+build.gradle:
+implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+implementation 'org.springframework.boot:spring-boot-starter-aop'
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+STEP2:
+application.properties:
+resilience4j.retry.instances.send-mail.max-attempts=5 // number of retries
+resilience4j.retry.instances.send-mail.wait-duration=1s  // time period between each retry
+resilience4j.retry.instances.send-mail.enable-exponential-backoff=true // exponentially increase the retry time period
+
+STEP3:
+MailController:
+	@PostMapping("/sendMail")
+    @Retry(name = "send-mail", fallbackMethod = "handleFallBack") 
+	// here @Retry is the resilience4j retry and fallbackMethod runs when all retries fails
+    public ResponseEntity<String> sendMail(@RequestBody MailBean mailBean) throws Exception{
+        logger.info("Incoming Request: {}",mailBean.getToMailId());
+        return mailService.sendMail(mailBean);
+    }
+	private ResponseEntity<String> handleFallBack(Exception e){
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+->b)Circuit Breaker:
+	Consider if we have 5 microservices and microservice3 is calling microservice4
+	if microservices4 goes down and if microservice3 is trying to call the microservice4 again and again
+	then the load on that microservice4 will increase and it may go down completely.
+	So the circuit breaker comes to the rescue
+	Circuit breaker in basic terms means we are breaking the circut so that no more calls will reach the Microservice4
+
+Follow the below steps to implement Resilience4j Circuit Breaker in spring boot
+
+Find the Circuit Breker Architecture here -> Circuit-Breaker-Architecture.JPG 
+
+Circuit Breaker contains three states they are closed, open and half-open
+In Closed State: All the requests coming to microservice4 will work as is, this is the happy path
+				We can configure a failure rate threshold such that when the failure rate to a specific API
+				in microservice4 is greater than the threshold value then the Circuit Breaker switches to Open State
+In Open State:The Circuit Breaker breaks the connection to the under lying API which is short circuit
+			  Microservice3 may make 1000's of request but none of them will call the API and it by default
+			  returns the fall back message.
+			  We can configure the wait period in Open State meaning How much time to wait in Open State
+			  before going to Half Open State.
+In Half Open State: The Circuit Breaker makes a makes a few request to the underlying API and if they get succeded
+					then it goes to Closed state if not it goes to Open State again.
+					this cycle repeats until the API is up and requests get succeded.
+					
+We can configure the Microservice4 with Circuit Breaker Pattern Using Resilience4j with Various parameters
+
+STEP1: copy the above STEP1
+
+STEP2: application.properties:
+// if 90% of the requests fails then it will go to open state
+resilience4j.circuitbreaker.instances.send-mail.failure-rate-threshold=90 
+
+// 30secs wait period to stay in open state before going to half open state
+resilience4j.circuitbreaker.instances.send-mail.wait-duration-in-open-state=30000
+
+// after the wait period is over and it moves to half open state it makes 5 calls to the underlying API
+resilience4j.circuitbreaker.instances.send-mail.permitted-number-of-calls-in-half-open-state=5
+
+STEP3:
+	@PostMapping("/sendMail")
+	@Retry(name = "send-mail", fallbackMethod = "handleFallBack")
+    @CircuitBreaker(name = "send-mail", fallbackMethod = "handleFallBack")
+    public ResponseEntity<String> sendMail(@RequestBody MailBean mailBean) throws Exception{
+        logger.info("Incoming Request: {}",mailBean.getToMailId());
+        return mailService.sendMail(mailBean);
+    }
+
+    private ResponseEntity<String> handleFallBack(Exception e){
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+	
+->c)Rate Limiter:  is to limit the number of requests to the API in a Period of time
+	->Bulk Head: is to limit the number of concurrent requests to an API
+	
+Follow the below steps to implement Resilience4j Rate Limiter and BULK Head in spring boot
+
+STEP1: COPY THE ABOVE STEP1
+
+STEP2: application.properties
+resilience4j.ratelimiter.instances.send-mail.limit-for-period=5 // no of calls to limit
+resilience4j.ratelimiter.instances.send-mail.limit-refresh-period=10s // time period to limit for
+
+resilience4j.bulkhead.instances.send-mail.max-concurrent-calls=5
+
+STEP3:
+	@PostMapping("/sendMail")
+    @Retry(name = "send-mail", fallbackMethod = "handleFallBack")
+    @CircuitBreaker(name = "send-mail", fallbackMethod = "handleFallBack")
+    @RateLimiter(name = "send-mail")
+    public ResponseEntity<String> sendMail(@RequestBody MailBean mailBean) throws Exception{
+        logger.info("Incoming Request: {}",mailBean.getToMailId());
+        return mailService.sendMail(mailBean);
+    }
+
+STEP4:
+	@PostMapping("/sendMail")
+    @Retry(name = "send-mail", fallbackMethod = "handleFallBack")
+    @CircuitBreaker(name = "send-mail", fallbackMethod = "handleFallBack")
+    @RateLimiter(name = "send-mail")
+    @Bulkhead(name = "send-mail")
+    public ResponseEntity<String> sendMail(@RequestBody MailBean mailBean) throws Exception{
+        logger.info("Incoming Request: {}",mailBean.getToMailId());
+        return mailService.sendMail(mailBean);
+    }
+
+=>6.Implement Distributed tracing with Spring Cloud Sleuth and Zipkin
+Why Distributed Tracing is needed?
+Consider we have 5 microservices and when do a request to any one of microservice it might internally call
+the many other microservices to get the response.
+Suppose if any one the request fails?
+If any error or exception occurs?
+How to debug the logs?
+Where will we look for the logs from all 5 Mircoservices...
+this is where Distributed Tracing Comes into picture
+
+What is Distributed Tracing:
+Distributed is tracing is having a centralized information of logs of all microservices
+
+We can acheive Distributed tracing using a)Spring Cloud Sleuth and b)Zipkin  -> Combined
+
+->a)Spring Cloud Sleuth:
+Spring cloud sleuth helps in tracing a request across microservices by adding a uniqueId to each request
+the uniqueId will be common across all the microservices
+
+Follow the below steps to implement the Spring Cloud Sleuth in any microservice
+STEP1: build.gradle:
+implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'
+STEP2: Restart the app
+
+NOTE: Spring Cloud Sleuth should be impemented in all microservices so that it will add the unique ID
+
+->b)SPRING CLOUD Zipkin:
+Zipikin is used in for distrubuted tracing of a request across all microservices from a one place
+instead of looking in each and every microservice
+
+=>7.Using Spring Cloud Bus to exchange messages about Configuration updates
+Spring Cloud Bus links nodes of a distributed system with a lightweight message broker. 
+This can then be used to broadcast state changes (e.g. configuration changes) or other management instructions.
+AMQP and Kafka broker implementations are included with the project. 
+Alternatively, any Spring Cloud Stream binder found on the classpath will work out of the box as a transport.

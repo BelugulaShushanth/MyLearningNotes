@@ -1,0 +1,452 @@
+The Java8 Fetaures:
+Content:
+1.Lambda Expressions  ->  Not a replacement for annonymous Inner classes -> annonymous Inner classes which have implement only one abstract method can be replaced with lambda expression
+2.Functional Interface
+3.Using Default Methods in Interfaces
+4.Using Static Methods in Interfaces
+5.Java8 Defined Functional Interfaces -> Predicate, Function, Consumer, Supplier
+6.Method Reference and Constructor reference by using double colon (::) operator
+7.Stream API -> to perform operations on collections by writing more readable and maintainable code
+8.Date and Time API using JODA API -> joda.org
+
+Theory:
+1.Lambda Expressions 
+	a)To Enable Functional Programming in Java
+	b)To write more readable, maintainable and concise code
+	c)To use API's more easily and efficiently
+	d)To Enable Parallel processing
+-> Anonymous class will not have any name, return type and modifiers. An annonymous class can be writen simply by using lambda expression
+->For example if we have a abstract class with one abstarct method as shown below:
+abstract class Person{  
+  abstract void eat();  
+}  
+
+->We can implement the above eat() method using the annonymous inner class as shown below:
+class Test{  
+ public static void main(String args[]){  
+  Person p=new Person(){                             // -> This is called annonymous inner class
+  void eat(){System.out.println("nice fruits");}  
+  };  
+  p.eat();  
+ }  
+}  
+
+->The same eat() method we can implement using the lambda expression in a more readable and efficiently way
+class TestAnonymousInner{  
+ public static void main(String args[]){
+	Person p = () -> {System.out.println("nice fruits");}   // -> This is a lambda expression of the above annonymous inner class
+ } 
+}
+
+->Some examples of writing lambda expressions
+->Ex:1
+abstract class sum{  
+  abstract void add(int a, int b);        
+}  
+class Test{  
+ public static void main(String args[]){  
+  Sum s=(a,b) -> System.out.println(a+b);  // -> here mentioning data type is not needed it is automatically guessed by compiler this is call TYPE INFERENCE
+  s.add(3,4);
+}
+}  
+->Ex:2
+abstract class Student{  
+  abstract String addNames(String fName, String lName);        
+}  
+class Test{  
+ public static void main(String args[]){  
+  Student s=(fName,lName) -> fName+lName;  // -> here mentioning return is not needed it is automatically guessed by compiler and curly braces are needed only of we are writing more than one statement
+  s.add(3,4);    
+}
+}  
+NOTE: From the above examples we can see that all the abstract classes have only one abstract method 
+So we can conclude that lambda expressions can be writen to a abstarct class or interface which has only one abstract method.
+
+2.Functional Interface
+->Functional Interface is an interface which has only one abstract method and the Interface and it can have any number of default and static methods and it should be annotated with @FunctionalInterface.
+-> @FunctionalInterface indicates that the interface is a functional interface and if the developers try to create more then one abstract methods then the compiler will show error
+->To write a lambda expression to a interface that interface must and should be a Functional Interface 
+Already predefined Functional Interfaces in Java before Java 8 are 
+	a)Runnable contains only run() method
+	b)Callable contains only call() method
+	c)ActionListener  contains only actionPerformed() method
+	d)Comparable contains only compareTo() method
+
+AnonymousInnerClass vs Lambda Expression difference: Refer the image: AnonymousInnerClassVsLambdaExpression.png
+	
+3.Using Default Methods in Interfaces
+Before Java8 we cannot declare a concreate method inside and interface
+From Java8 we can declare a concreate method inside interface using default keyword
+Example:
+interface Sayable{  
+    // Default method   
+    default void say(){  
+        System.out.println("Hello, this is default method");  
+    }  
+    // Abstract method  
+    void sayMore(String msg);  
+}  
+public class DefaultMethods implements Sayable{  
+    public void sayMore(String msg){        // implementing abstract method   
+        System.out.println(msg);  
+    }  
+    public static void main(String[] args) {  
+        DefaultMethods dm = new DefaultMethods();  
+        dm.say();   // calling default method  
+        dm.sayMore("Work is worship");  // calling abstract method  
+  
+    }  
+}  
+To call the defualt method one should implement the interface and then we can create a obj of implemented class to call default method
+Default method can be used as it is by the implemented class or it can be overriden as per the requirment
+->Default methods with multiple inheritence:
+->For example if two interfaces have same default method names but the implementation is different.
+IF a class implements the above two interfaces then the compiler will throws the ambiguity error that which method it should use
+this can be solved by using the below example
+interface A{
+	default void m1(){
+		S.O.P("A");
+		}
+}
+interface B{
+	default void m1(){
+		S.O.P("B");
+		}
+}
+class Test implements A,B{
+	// this will throw the error that which m1 method it should use it can solved by overrding m1() or by using the super keyword
+	public void m1(){
+		A.super.m1() // this will call the interface A m1() method
+	}
+}
+Difference between Interface with default method and abstract classes: Refer the image: InterfaceWithDefaultMethodsVsAbstractClass.png
+NOTE: In interface by default all the variables are public static final.
+
+4.Static Methods in Interface:
+From java 8 we can create static conncreate methods in an interface which can be used for implementing common utility methods
+Example:
+public interface Student {
+
+    static String getUtil(){
+        return "Utils";
+    }
+}
+public class Main {
+
+    public static void main(String[] args) {
+        System.out.println(Student.getUtil());  // the static methods comes with the Interface not with the object. It never stores the state. 
+		                                       //And these static methods can only be called by using Interface name and not by the implemented classes
+    }
+}
+NOTE: 
+a.Staic methods defined in an interface will not be available in the implemented class by default
+b.Method overrding is not possible for interface static methods
+c.From java 8 as we can write static concrete methods in interface. 
+  we can write a static main method inside interface and the code compiles successfully.
+
+5.Java8 Defined Functional Interfaces -> Predicate, Function, Consumer, Supplier
+In Java 8 there is a new package introduced called java.util.function which has 
+functional interfaces named Predicate, Function, Consumer, Supplier.
+a)Predicate:
+->Predicate is used to perform some conditional check and return true or false (boolean value).
+->Predicate has single abstract method called test because it is Functional Interface
+->If we want to perform conditional checkes and return a boolean value then we should go for predicate
+->The Predicate interface is defined as below
+@FunctionalInterface
+interface Predicate<T>{
+	boolean test(T t);
+	
+	//it has 3 default and 1 static method as well
+}
+Example of predicate:
+public boolean test(Integer i){
+	if(i>10){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+we can represent the above in the form of lambda expression because Predicate is functional interface
+i -> i>10;   // this is the lambda representation of predicate test method
+The above lambda expression gives the Predicate object
+Predicate<Integer> predicate = i -> i>10;
+S.O.P(predicate.test(5));
+Predicate Joining:
+We can join two predicate results and form the final predicate from both the prediactes
+Example:
+Predicate p1 = i -> i>10;  // checkes if the given number is greater or not
+Predicate p2 = i -> i%2==0; // checkes if the given number is even or odd
+To negate a predicate we can use p1.negate() ->  // checkes if the given number is less or not
+To check if both greater and even are true we can join two predicates:
+Predicate p3 = p1.add(p2) // checks if both the predicates are true
+Predicate p4 = p1.or(p2) // checks if anyone of the predicates is true
+Predicate<String> p5 = Predicate.isEqual("Sushanth");
+        System.out.println(p5.test("Sushanth")); // returns true
+        System.out.println(p5.test("belugula")); // returns false
+Note: from the above examples we can consider that
+     Predicate Interface contains multiple default methods called negate(), add(), or()
+	 Predicate Interface contains one static method called isEqual() it is used to check if the input obj is equal
+b)Function:
+->Function is used to perform any operations and it can return any data type or any object
+->Function has only one single abstract method called apply()
+->If we want to perform certain operations and return some value of any data type or object then we should go for function
+-The Function interface is defined as below
+interface Function<T,R>{
+	R apply(T t);
+	
+	//it has 2 default and 1 static method as well
+}
+T->is the input type
+R->is the return type
+Example of Function:
+public class Main {
+    public static void main(String[] args) {
+        Function<String,Integer> f1 = s -> s.length();
+        System.out.println(f1.apply("Sushanth"));
+    }
+}
+Function Chaining:
+We can chain two Function's and execute them in some order
+Consider two Functions f1 and f2 then we can chain them as below
+f1.andThen(f2)  // it will execute the f1 first followed by f2
+f1.compose(f2)  // it will execute the f2 first followed by f1
+Example:
+Function<String,String> f1 = s -> s.toUpperCase();
+        Function<String,String> f2 = s -> s.substring(0,3);
+        System.out.println(f1.apply("Sushanth"));  
+        System.out.println(f2.apply("Sushanth"));
+        System.out.println(f1.andThen(f2).apply("Sushanth"));
+        System.out.println(f2.compose(f1).apply("Sushanth"));
+Result:
+SUSHANTH
+Sus
+SUS
+SUS
+NOTE:From the above examples we can infer that Function interface also has 2 default methods called andThen() and compose() and one static method called identity()
+	If we want to get the same function as the return we can use static method called identity()
+Ex: Function<String, String> f3 = Function.identity();
+        System.out.println(f3.apply("Sushanth"));
+c)Consumer:
+->Consumer is used to perform any operations and it will not return anything basically it consumes the input
+->Consumer has only one abstract method called accept()
+->If we want to perform any operations and dosenot return any value then we should go for consumer
+->The Consumer interface is defined as below
+interface Consumer<T>{
+	void accept(T t);
+	
+	//it has 1 default method as well
+}
+T-> is the input type
+Example:
+Consumer<String> c = s -> System.out.println(s);
+        c.accept("Sushanth");
+Consumer Chaining:
+We can chain two Consumer's and execute them in serial order
+Consider two Consumer c1 and c2 then we can chain them as below
+c1.andThen(c2)  // it will execute the c1 first followed by c2
+d)Supplier:
+->Supplier is used to perform any opertion to get some data in return it wont accept any inputs
+->Supplier has only one abstarct method called get
+->If we want to get any data or object without giving any input then we should go for supplier
+->The supplier interface is shown as below:
+interface Supplier<R>{
+	R get();
+}
+Example:
+ Supplier<String> s = () -> {
+            String otp = "";
+            int randomNumber = 0;
+            for (int i=0; i<6; i++){
+                randomNumber = (int) (Math.random() * 10);
+                otp = otp + randomNumber;
+            }
+            return otp;
+        };
+        System.out.println(s.get());
+BIPredicate:
+->BIPredicate is same as the Predicate but it takes two input
+->If we want to perform some conditional checkes on two inputs then we should go for BIPredicate
+Example:
+BiPredicate<Integer,String> biPredicate = (i,s) -> i==s.length();
+System.out.println(biPredicate.test(5,"Sushanth"));
+
+BIFunction:
+->BIFunction is same as Function but it has two inputs and one return type-
+->If we want to perform some operations on two inputs and return some data then we should go for BiFunction
+Example:
+BiFunction<Integer, String, Integer> biFunction = (i,s) -> i*s.length();
+System.out.println(biFunction.apply(5,"Sushanth"));
+
+BIConsumer:
+->BIConsumer is same as Consumer but it has two inputs 
+->If we want to perform some operations on two inputs and not return anything then we should go for BIConsumer
+Example:
+BiConsumer<String,String> biConsumer = (s1,s2) -> System.out.println(s1+" "+s2);
+biConsumer.accept("Sushanth", "Belugula");
+
+Primitive Type Functional Interfaces:
+primitive date types -> int,byte,long,float,double
+wrapper data type -> Integer,Byte,Long,Float,Double
+Autoboxing:
+Automatic conversion from primitive to wrapper object is called Autoboxing -> example: Integer i = 10
+Autounboxing:
+Automatic conversion from wrapper object to primitive  is called Autounboxing 
+-> example: Integer i = new Integer(10);
+			int x = i // performs autounboxing
+->The need for primitive types in Functional interfaces is because if we use the Wrapper objects
+	while performing any operations the input data needs to be auto boxed or auto unboxed so it will degrade the performace of the application
+Example:
+public class Main {
+
+    public static void main(String[] args) {
+        //List<Integer> integers = Arrays.asList(10,20,5,30,100,45,3);
+        int integers[] = {10,20,5,30,100,45,3};
+        Predicate<Integer> p1 = i -> i>10; // here we are passing wrapper Integer object but with wrapper object 
+											// but we cannot perform arithmetic operations so it will autounbox the wrapper to primitive it will degrade the performance
+        Predicate<Integer> p2 = i -> i%2==0;
+        System.out.println("Numbers greater than 10 are");
+        m1(p1,integers);
+	}
+		
+		public static void m1(Predicate<Integer> predicate, int[] integers){
+        for(int i: integers){
+            if(predicate.test(i)){    // here we are passing the primitive integer but internally the compiler will autoBox this to a wrapper object Integer this will degrade performance
+                System.out.println(i);
+            }
+        }
+    }
+}
+->From the above example it is clear that if we use Wrapper Object Data types with functional interface's it will degarde the app performance
+->So that's the reason why primitive functional interfaces are intoduced
+
+IntPredicate:
+->It is same as predicate but it will accept primitive int value as the input
+->IntPredicate is represented as below
+interface IntPredicate{
+	public boolean test(T t);
+}
+example:
+ IntPredicate intPredicate = i -> i%2==0;
+in the same way we have LongPredicate, DoublePredicate and so on...
+In the same way we have all primitive types for functionals interfaces like Function, Consumer, Supplier
+6.Method Reference and constructor reference By using Double Colon(::) operator
+Mehtod Reference By using Double Colon(::) operator:
+->we can provide implemnation to a abstract method in interface using Method reference also insted of lambda
+Example:
+Interface I{
+public void m1()
+}
+
+public class Test{
+	public static void m2(){
+	s.o.p("Hello")
+}
+}
+
+public class Main{
+
+	p s v m(String args[]){
+        Interface i = () -> s.o.p("Hello"); // -> using lambda
+        i.m1()
+        Interface i2 = Test::m2()
+        i2.m1(); // here m1() referes the m2() method this is called method reference
+}
+}
+
+NOTE: If we want to use method reference two methods should have same arguments and argument type except this all remaining can be different
+Syntax for Method reference:
+If referred method(m2) is static mehthod: syntax-> ClassName::methodName
+If referred method(m2) is non static mehthod: syntax-> ObjectReference::methodName
+
+Contsructor Reference using :: operator
+->we can provide implemnation to a abstract method in interface using Constructor reference also insted of lambda
+Example:
+Interface I{
+public Sample get();
+}
+
+public class Sample{
+	Sample(){
+	s.o.p("Hello");
+	}
+}
+
+public class Main{
+	p s v m(String args[]){
+		Interface i = () -> { Sample s = new Sample()
+		return s}; // -> using lambda
+		i.get()
+		Interface i2 = Sample::new
+		i2.get(); // here get method referes the consutructor of Sample class and gets the Sample object
+	}
+}
+
+7.Streams:
+->java.io.Streams is used to perform read and write operations on files
+->java.util.Stream is used to perform certian operations on Collection of objects // 1.8 Java
+->Streams is used to process the Objects from Collection
+->Stream()->Is present in collection interface as a default method
+->Stream is an interface comes from java.util.Stream
+
+Filter in stream:
+->Filter takes the object of Predicate Functional Interface
+->Filter is used to do some conditional checks on the list of objects
+Example:
+List<Integer) list = Arrays.asList(2,5,8,20,10);
+List<Integer) evenList = list.stream().filter(l->l%2==0).collect(Collectors.toList()); // returns list of even numbers
+
+Map in Stream:
+->Map is used to apply some Operations on list of objects and map it to the new list of objects
+->Map takes Function Functional Interface
+Example:
+List<Integer) list = Arrays.asList(2,5,8,20,10);
+List<Integer) doubledList = list.stream().map(l->l*2).collect(Collectors.toList()); // returns list of doubled numbers
+
+Collect in Stream:
+->This mehtod collects the elements from the stream and add it to the specified collection
+
+Count in Stream:
+->This is used to find the no of the elements in stream
+
+consider this list for all the below examples List<Integer) list = Arrays.asList(2,5,8,20,10);
+Sorted in Stream:
+->This method os used to get the sorted order of streams
+Sorted() -> for default sorting order
+Sorted(Comporater C) -> for customized sorted order
+EX:
+list.Stream().sorted((i1,i2) -> -i1.compareTo(i2)).collect(Collectors.toList()); // (20,10,8,5,2) descending order
+
+Min and Max in Stream:
+-> to get the min or max of a stream according to the specified compartor
+ex:
+int minValuefromList = list.Stream().min((i1,i2)->i1.compareTo(i2)).get; // 2
+int minValuefromList = list.Stream().max((i1,i2)->i1.compareTo(i2)).get; // 20
+
+ForEach in Stream:
+->This method takes conusmer Functional Interface object as lambda expression and wont return anything
+ex:
+list.stream().forEach(i -> System.out::println);
+
+ToArray in Stream:
+->This method is used to convert elements in stream to Array
+
+Stream.of() in stream:
+->This is used to get a stream for group of values
+Stream<Integer> integerStream = Stream.of(2, 5, 8, 4, 20, 45, 9);
+
+8.Date and Time API using JODA API -> joda.org
+This JODA Time API is introduced in Java 8 to conviently use Date and Time with more functionality and speed
+Example:
+LocalDate date = LocalDate.now();
+s.o.p(date)
+LocalTime time = LocalTime.now();
+s.o.p(time)
+
+
+
+
+Method Overriding scope:
+When we Override a parent class method then that Overrided method must have the wider access specifier
+
+Access spcefiers from more access to less access: public > protected > default > private

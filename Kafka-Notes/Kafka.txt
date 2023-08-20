@@ -1,0 +1,333 @@
+Apache Kafka With Spring Boot:
+
+=>Challenges with data movement from source system to target system and data integration:
+So lets assume a company will have a source system and a target system and it wants to send data from source system to target system
+				
+								SOURCE SYTEM 
+									↓
+								TARGET SYSTEM
+				
+And at first, it's very simple.Someone who writes some code and then take the data,extract it,transform it,and then send it to target system
+Now, after a while, your company evolves and has many source systems and also has many target systems.
+								
+								SOURCE SYSTEM	SOURCE SYSTEM	SOURCE SYSTEM   SOURCE SYSTEM
+														↓
+								TARGET SYSTEM	TARGET SYSTEM 	TARGET SYSTEM	TARGET SYSTEM
+
+And now your data integration challenges just got a lot more complicated,because all your source systems must send data
+to all your target systems to share information.And as we can see, we have a lot of integration.
+
+=>For example CONSIDER:
+If you have 4 source systems and 6 target systems,you're going to have to write 24 integrationsto make it work.
+And each integration comes with difficulty around the protocol, because the technology has changed.
+a)Maybe the data is going to be transported over TCP, HTTP, REST, FTP, JDBC ?
+b)The data format.So how is the data parsed? Is it Binary, CSV, JSON ?
+c)Data schema and evolution, what happens if the data changes in shape overall in your source or your target systems ?
+D)And then each source system will also have an increased load from all the connections and the request to extract the data.
+
+So how do we solve this problem?
+
+Well, we bring some decoupling using Apache Kafka.So we still have our source systems and our target system,
+but in the middle, will sit Apache Kafka.
+
+								SOURCE-SYSTEM1	SOURCE-SYSTEM2	SOURCE-SYSTEM3   SOURCE-SYSTEM4
+														↓
+												APACHE KAFKA CLUSTER
+													    ↓
+								TARGET-SYSTEM1	TARGET-SYSTEM2	TARGET-SYSTEM3	 TARGET-SYSTEM4
+
+What happens?
+
+Now the source systems are responsible for sending data.It's called producing data into Apache Kafka.
+So now Apache Kafka is going to have a data stream of all your data, of all your source systems within it.
+
+And your target systems,if they ever need to receive data from your source systems,they will actually tap into the data of Apache Kafka.
+because Kafka is meant to actually receive and send data.So your target systems are now consuming from Apache Kafka,
+and everything looks a little bit better and a little bit more scalable.
+
+Now, why is Apache Kafka so good?
+Well, Kafka was created by LinkedIn.It's a huge corporation.And it was created as an open source project.
+Now it's mainly maintained by big corporations such as Confluent, IBM, Cloudera, LinkedIn, and so on.
+
+Kafka Defination:
+Apache Kafka is a real-time data streaming technology capable of handling trillions of events per day. 
+Initially conceived as a messaging queue, Kafka is based on an abstraction of a distributed commit log. 
+Since being created and open sourced in 2011, Kafka has since become the industry standard for working with data in motion.
+
+Features Of Kafka:
+a)It's distributed, has a resilient architecture,and is fault tolerant.
+  That means that you can upgrade Kafka.You can do Kafka maintenance without taking the whole system down.
+b)Kafka has horizontal scalability.That means that you can add brokers over time into your Kafka cluster.
+c)Scalability to hundreds of broker.
+d)Kafka also has huge scale for messages throughputs.So you can have millions of messages per second.
+e)Also, it's really high performance.So you have really low latency.Sometimes it's measured in less than 10 millisecond,
+ which is why we call Apache Kafka a real time system.Kafka also has a really wide adoption across the world.
+
+
+Now into the use cases, how is Apache Kafka used?
+
+->It's used as a messaging system, activity tracking system.
+->It's used to gather metrics from many different locations,gather application logs.
+->It's used to be like the first use cases for Kafka.
+->More recently, it's used for stream processing,
+->It's used to decouple system dependencies and microservices.
+->It has integration with big data technologies such as Spark, Flink, Storm Hadoop.
+->It's also used for microservices publish/subscribe.
+
+So some more concrete example into how Kafka is being used.
+
+->So Netflix is using Apache Kafka to apply recommendations in real time while you're watching TV shows.
+->Uber is using Kafka to gather user taxi and trip data in real time and compute and forecast demand,also compute your pricing in real time.
+->And LinkedIn uses Kafka to prevent spam,collect user interactions to make better connection recommendations in real time.
+
+So in all of that,Kafka is only used as the transportation mechanism, which allows huge data flows in your company.
+
+Find the Kafka Architecture here -> Kafka-Architecture.png
+
+Things to learn in Kafka
+1)Kafka CLUSTER & Kafka Broker
+3)Kafka Topic
+4)Zookeper and KRaft
+5)Kafka CLI
+6)Kafka Producer
+7)Kafka Consumer
+8)Kafka Connect 
+9)Kafka Streams
+10)Kafka Confluent Schema Registry
+11)Kafka Architecture in enterprise
+12)Kafka Advanced API's
+13)Kafka Topic Configurations
+14)Kafka Security
+15)Kafka KsqlDb
+
+=>Kafka Topic:
+Kafka topics are the categories used to organize messages. 
+Each topic has a name that is unique across the entire Kafka cluster. 
+Messages are sent to and read from specific topics.
+In other words, producers write data to topics, and consumers read data from topics. 
+Kafka topics are multi-subscriber meaning many consumers can subscribe to one kafka topic and read the messages
+So Kafka cluster can have many topics.
+well, a topic is similar to what a table would be in a database, but without all the constraints.
+Because you send whatever you want to a Kafka topic,there is no data verification.
+These Kafka topics support any kind of message formats you can send any msg like Json, XML,text, binary whatever you want.
+The sequence of the messages in a topic,is called a data stream.And this is why Kafka is called a data streaming platform.
+because you make data stream through topics.You cannot query topics.
+Kafka topics are also immutable.That means that once the data is written into a partition,it cannot be changed.
+So, we cannot delete data in Kafka
+
+=>Partitons and Offest:
+Each Kafka Topic can be divided into one or many partions(the number of partions should be less than or equal to number of brokers)
+So for example if we have a topic names cricket-scores and 3 partions
+Then when we publish the events to cricket-scores topic then each event will go to each Partition
+such that the number of events in each topic would be same
+for example if we are publishing 10 events then
+Partition-1 : 3 events
+Partition-2 : 3 events
+Partition-3: 3 events
+the remainig 1 event may go to any one of the Partition
+when we publish events to kafka topic it will assign a key to each event which is offset it starts from 0 for each partition
+Partition-1 : 0123456.....n number of events
+Partition-2 : 0123456.....n number of events
+Partition-3 : 0123456.....n number of events
+If we keep of publishing events the offset keeps on increasing
+
+Check the Kafka Topic Architecture here: Kafka-Topic-Architecture.png
+
+Note:
+->In Kafka Data is only kept for limited time the default is 1 week - configurable
+->Offset only have a meaning for a specifc partion
+	eg:offset 3 in partition 0 event is not same as offset 3 in partition 1 event.
+->Offest are not re used even if the previous events have been deleted ( offsets keeps on increasing one by one)
+->Order of messages is guaranteed only within a partition but not across partitions.	
+->Data when sent to a Kafka topic,is going to be assigned to a random partition. Unless you provide a key(More on this next)
+
+=>Producer and Event/Message key:
+->Producer write data to kafka topic
+->Producer knows which partition to write nad which broker has it
+->In case of Kafka broker failures the producer will automatically recover
+->The load is balanced across the brokers
+Event/Message Key:
+->Producer can choose to send a key with the event/message the key can be a string,number,binary etc
+->If key=null the data is sent round robin like partition-1, partition-2, partition-3....
+->If key!=null then all the events/messages will always go to the same partition(Hashing Strategy)
+->A key is typically sent if you need message ordering for a specific field
+Note: 
+->Find the Kafka Message Format or anatomy here : Kafka-Messages-Anatomy.png 
+->Check out how key hashing works here: Kafka-Key-Hashing.png
+
+=>Consumer:
+	->Cosumer read data from a subsribed topic
+	eg: consider we a have topic cricket-scores which has 3 partitions
+		Partition-0, Partition-1, partition-3
+		and we have 2 consumers listening to the topic cricket-scores then
+		consumer-1 will read from Partition-0 and consumer-2 will read from Partition-1 or Partition-2 or vice versa and the order may be different
+	->Consumers automatically know which broker/partition to read from
+	->In Case of broker failures a consumer knows how to recover
+	->Consumer reads data from low to high offset(Ascending order) within each partition
+	Note: check the consumer architecture here Kafka-Consumer-Architecture.png
+
+=>Kafka Message Serialization(While Producing) and Desiralization(While Consuming):
+	Serialization: is converting Object(Data of anyformat) to bytes
+	Desiralization: is converting bytes to required object or data format
+
+	Kafka only accepts bytes as an input from producer and sends bytes as an output to consumer
+
+	In kafka we will specify the below properties:
+	For Producer:
+	Key-Serializor=Integer or Float or String(Inclulding JSON, XML)
+	Value-Serializor=Integer or Float or String(Inclulding JSON, XML)
+	For Consumer:
+	Key-deSerializor=Integer or Float or String
+	Value-deSerializor=Integer or Float or String
+
+	example: if key=123 and value="Hello World" then we will use the below properties
+	For Producer:
+	Key-Serializor=Integer
+	Value-Serializor=String
+	For Consumer:
+	Key-deSerializor=Integer
+	Value-deSerializor=String
+
+	Note: The Serialization and Desiralization type must not change during a topic lifecycle(Create a new topic instead)
+
+=>Consumer Groups and Consumer Offset:
+	->Consumer Groups:
+		->A group of consumers is called a consumer group
+		->Each Consumer in the group reads from exlcusive partitions
+			eg: consider we have a topic cricket-scores which has 5 partitions
+				partition-0 partition-1 partition-2 partition-3 partition-4
+
+		if we have a consumer group named cric-consumer-group, which has 3 consumers
+		consumer-1 -> may read from partition-0 partition-1
+		consumer-2 -> may read from partition-2
+		consumer-3 -> may read from partition-3 partition-4
+
+		What if we have too many consumer?
+		eg: consider we have a topic cricket-scores which has 3 partitions
+			partition-0 partition-1 partition-2
+		if we have a consumer group named cric-consumer-group, which has 4 consumers
+		consumer-1 -> may read from partition-0 
+		consumer-2 -> may read from partition-1
+		consumer-3 -> may read from partition-2
+		consumer-4 -> INACTIVE ( if any of the above consumer is down then this cosumer will go to active state)
+		->Multiple Cosumer groups for a single topic:
+		In Kafka is acceptable to have multiple consumer groups on the same topic 
+		To Create distinctive consumer groups use the consumer property called group.id
+		Check this image for more info: Kafka-MultipleConsumerGroups.png
+	
+	->Consumer Offset:
+		- Kafka Stores the offset at which a consumer group is reading
+		- The offsets commited are stored in kafka topic names as __consumer_offsets.
+		- When a consumer group has processed data received from kafka, it should be perodically commiting the offsets 
+		 (the kafka broker will write to __consumer_offsets, not the group itself)
+		 ex: consider a partition which has messages
+			Partition-0: 0123456789
+		 so when a consumer starts it will read the messages from offset 0 and after reading the offset 0 message it will commit to kafka broker
+		 if the consumer goes down after reading the messages upto offset 5 then it will commit to kafka broker that upto 5 offsets are read
+		 so if the consumer comes up then it will start reading from the offset 6 as the commited offset is 5
+		- In Java the offsets are commited automatically(At Least Once)
+		we can manually change the offset commit config to 3 types : 
+		->At Least Once(Usually Preferred):
+			- Offsets are commited after the message is processed
+			- If the processing goes wrong the message will be read again
+			- This can result in a duplicate processing of messages make sure you are processing is idempotent
+				(i.e processing the messages again wont impact the system)
+		->At Most Once:
+			- Offsets are commited as soon as the message is received
+			- If the processing goes wrong some messages will be lost ( they won't be readed again)
+		->Exactly Once:
+			- For Kafka => Kafka Workflows: use the Transactional API ( easy with kafka streams)
+			- For Kafka => External System Workflows: use the idempotent consumer
+
+=>Kafka Cluster and Kafka Broker:
+	- A Kafka Cluster is composed of multiple brokers
+	- A Kafka Broker is basically a server. In kafka a server is called as broker because it send and receive data.
+	- Each broker has a unique id in the cluster
+	- Each broker contains certain partions of a topic(which means the data of a topic is distributed across brokers)
+	- After connecing to any broker (also called as bootstrap broker). Then the kafka producer or kafka client
+		will automatically know to connect to the enitre cluster(Kafka Clients have smart mechanism for that)
+	- Example: Consider a Kafka Cluster has 3 brokers, and Topic-A with 3 partitions, Topic-B with 2 partions
+	
+					Partition-0    		       		Partition-1				Partition-2
+					Topic-A-Partition-0				Topic-A-Partition-2		Topic-A-Partition-1
+					Topic-B-Partition-1				Topic-B-Partition-0
+
+	- Kafka Broker Discovery Mechanism: find here Kafka-Broker-Discovery.png
+
+=>Topic Replication and Replication Factor:
+	- Each Partition of a Topic in a broker-0 can be replicated in another broker-1 
+		such that if the broker-0 goes down then the data can be still readed from broker-1
+	- if replication factor is 2 then the partition is replicated over 2 brokers
+	- Check how it works here : Kafka-Topic-Replication.png and Kafka-Topic-Replication1.png
+	->Concept of Leader for a partition:
+		- At any time only one broker can be a leader of a partition
+		- Producer can only send data to the broker that is the leader of the partition
+		- The Leader broker which has partition-0 is replicated over the remaining brokers in sync
+		- Therefore each partition has one Leader and multiple In-Sync Replicas
+		check how it works here: Kafka-Topic-Replication2.png
+	->Default Producer and Consumer behavior with the leaders
+		- Kafka producer can only write to leader broker of partition
+		- Kafka consumer can only read from leader broker of partition
+	-> Kafka Topic Durability:
+		- For a replication factor of N you can permanently lose the N-1 brokers and still receive your data
+		- eg: For a topic replication factor of 3, topic data durability can with stand 2 broker loss
+	-> Kafka Consumer Replica fetching ( KAFKA v2.4+)
+		- Since kafka 2.4 it is possible to configure consumers to read from the closest replica
+		- This may improve latency and also decrease network costs if using cloud
+		
+=>Producer Acknowledgment:
+	- Producer can choose to receive the acknowledgment of data writes
+		acks=0 : Producer won't wait for acknowledgment(possible data loss)
+		acks=1 : Producer waits for the leader acknowledgment(limited data loss)
+		acks=all : Producer waits for the both leader and all replicas acknowledgment ( No Data Loss)
+		
+=>Zookeper:
+	- Zookeeper is a software which runs on different server and keeps the Kafka metadata
+	- Zookeper manages brokers ( keeps list of them)
+	- Whenever we have a broker going down,we need to perform a leader electionto choose new leader for partitions,
+		and Zookeeper is going to help with this process.
+	- Zookeeper sends notification ro kafka in case of changes
+		(eg:New topic, broker dies, broker comes up,delete topics etc)
+	- Kafka version upto 2.x cannot work without zookeper
+	- Kafka version from 3.x can work without zookeperby using Kafka Raft(Not Production ready until v4) instead of zookeper
+	- Kafka version 4.x will not have zookeper
+	- Zookeeper by design operates with an odd number of servers(1,3,7,...)
+	- Zookeper Cluster : find here Zookeper-Cluster.png
+	- why move from zookeper to Kafka Raft?:
+		Zookeeper is less secure than kafka, and therefore zookeper ports should only be opened to allow traffic from kafka brokers not clients
+	
+=>Kafka Raft(KIP-500): find here: Kafka-Raft-About.png, Kafka-Raft-Architecture.png
+
+=>INSTALLING KAFKA ON WINDOWS 10 OR 11
+STEP1: Install WSL2(Windows Subsystem for linux)
+		open windows powershell in admin mode and run command wsl --install
+		restart the system and ubuntu gets installed automatically
+STEP2: Open Ubuntu and Install Java JDK-11
+STEP3: Download kafka binaries using wget command: wget https://archive.apache.org/dist/kafka/3.0.0/kafka_2.13-3.0.0.tgz
+STEP4: SETUP Kafka Path:
+		-> copy the kafka bin path like /opt/apps/kafka/kafka_2.12-3.3.1/bin
+		-> open bashrc cmd:  nano ~/.bashrc
+							add a line in the last: export PATH="$PATH:/opt/apps/kafka/kafka_2.12-3.3.1/bin"
+		->Save and restart ubuntu
+		
+=>KAFKA COMMANDS
+
+1. STARTING Zookeeper
+	zookeeper-server-start.sh /opt/apps/kafka/kafka_2.12-3.3.1/config/zookeeper.properties
+2. STARTING KAFKA with zookeeper
+	 kafka-server-start.sh /opt/apps/kafka/kafka_2.12-3.3.1/config/server.properties
+	 kafka-server-start.sh /opt/apps/kafka/kafka_2.12-3.3.1/config/server.properties --override broker.id=1 --override listeners=PLAINTEXT://:9093 --override log.dirs=/tmp/kafka-logs1
+	  kafka-server-start.sh /opt/apps/kafka/kafka_2.12-3.3.1/config/server.properties --override broker.id=101 --override listeners=PLAINTEXT://172.17.104.20:9092 --override log.dirs=/tmp/kafka-logs101
+3. STARTING KAFKA with KRAFT
+	kafka-storage.sh random-uuid
+	kafka-storage.sh format -t <uuid> -c /opt/apps/kafka/kafka_2.12-3.3.1/config/kraft/server.properties
+	kafka-server-start.sh /opt/apps/kafka/kafka_2.12-3.3.1/config/kraft/server.properties
+	
+NOTE: (some imp cmds)
+Open Windows Drives in ubuntu cmd: cd mnt/
+Print hostname in ubunut cmd: hostname -I
+Ping in windows cmd: ping IP-ADDRESS
+Kill a running port linux:  netstat -tulpn and kill PID
+
+ 
+ 
