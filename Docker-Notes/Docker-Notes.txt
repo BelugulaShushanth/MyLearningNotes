@@ -274,3 +274,8 @@ Docker volume commnads:
 ->docker run --name=mysql -p 8267:3306 -v mysql-db-vol1:/var/lib/mysql -e  MYSQL_ROOT_PASSWORD=root 54150
 
 =>Docker Network:
+Check tutorial here:https://docs.docker.com/network/network-tutorial-standalone/
+To list current docker networks: docker network ls
+To create a docker network: docker network create network-name
+To Inspect a docker network: docker network inspect network-name
+To attach a container to a custom network: docker run --name container-name --network network-name image-id
