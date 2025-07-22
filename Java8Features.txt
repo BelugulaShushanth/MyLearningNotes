@@ -330,6 +330,18 @@ example:
  IntPredicate intPredicate = i -> i%2==0;
 in the same way we have LongPredicate, DoublePredicate and so on...
 In the same way we have all primitive types for functionals interfaces like Function, Consumer, Supplier
+
+UnaryOperator<T>
+A special case of Function<T, T> for same input and output types.
+UnaryOperator<String> toUpper = s -> s.toUpperCase();
+System.out.println(toUpper.apply("java")); // JAVA
+
+BinaryOperator<T>
+A special case of BiFunction<T, T, T> where all types are the same.
+BinaryOperator<Integer> sum = (a, b) -> a + b;
+System.out.println(sum.apply(5, 3)); // 8
+
+
 6.Method Reference and constructor reference By using Double Colon(::) operator
 Mehtod Reference By using Double Colon(::) operator:
 ->we can provide implemnation to a abstract method in interface using Method reference also insted of lambda
@@ -358,6 +370,15 @@ NOTE: If we want to use method reference two methods should have same arguments 
 Syntax for Method reference:
 If referred method(m2) is static mehthod: syntax-> ClassName::methodName
 If referred method(m2) is non static mehthod: syntax-> ObjectReference::methodName
+
+Reference to an Instance Method of an Arbitrary Object of a Particular Type
+Use when you want to refer to an instance method, but the instance is supplied at runtime (e.g., via stream or collection).
+List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
+// Lambda
+names.forEach(name -> System.out.println(name));
+// Method reference
+names.forEach(System.out::println);
+
 
 Contsructor Reference using :: operator
 ->we can provide implemnation to a abstract method in interface using Constructor reference also insted of lambda
@@ -450,3 +471,318 @@ Method Overriding scope:
 When we Override a parent class method then that Overrided method must have the wider access specifier
 
 Access spcefiers from more access to less access: public > protected > default > private
+
+--------------------------------------------------------------------------------------------------------
+Ways to convert stream to list:
+1. collect(Collectors.toList()) (Java 8+)
+Mutable ArrayList keeps encounter order, allows duplicates and nulls
+2. collect(Collectors.toUnmodifiableList()) (Java 10+)
+Returns an unmodifiable List Disallows null elements; throws NullPointerException if found
+3. stream.toList() (Java 16+)
+Terminal operation returning an unmodifiable List Allows null elements
+More optimized than collect (no extra list copy)
+4.collect(Collectors.toCollection(...))
+Choose your List implementation, e.g. LinkedList or a pre-sized ArrayList
+Example:
+List<String> arrayList = stream
+    .collect(Collectors.toCollection(ArrayList::new));
+
+List<String> linkedList = stream
+    .collect(Collectors.toCollection(LinkedList::new));
+------------------------------------------------------------------------------------------------
+Ways to convert an array to List
+1. Arrays.asList(array)
+String[] arr = {"a", "b", "c"};
+List<String> list = Arrays.asList(arr);
+Returns a fixed-size list backed by the original array
+Mutating the list updates the array (and vice versa)
+Doesn't support add or remove (throws UnsupportedOperationException)
+
+2. Mutable ArrayList via constructor
+List<String> list = new ArrayList<>(Arrays.asList(arr));
+Creates a modifiable ArrayList copy
+Supports structural modifications (e.g., add, remove)
+
+3. Java 8 Streams
+List<Double> list = Arrays.stream(arr).collect(Collectors.toList());
+Flexible: allows intermediate operations (filter, map, etc.)
+Returns a mutable ArrayList by default
+
+4.List.of() (Java 9+)
+List<String> immutable = List.of(arr);
+Creates an immutable list
+Copies the array (so later changes to arr don’t affect it)
+Nulls not allowed; adding/removing elements throws exception
+--------------------------------------------------------------------------------------
+FlatMap is an intermediate Stream operation:
+<R> Stream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper)
+Think of it as: map + flatten.
+map transforms each element to a single value.
+flatMap transforms each element to a Stream of values and flattens them into one continuous Stream 
+Example:
+String[] lines = {
+    "Hello world",
+    "Java flatMap tutorial"
+};
+
+List<String> words = Stream.of(lines)
+    .flatMap(line -> Arrays.stream(line.split("\\s+")))
+    .filter(w -> !w.isBlank())
+    .toList(); // ["Hello", "world", "Java", "flatMap", "tutorial"]
+	
+reduce()?
+reduce() is a terminal operation that applies a BinaryOperator to stream elements to collapse them into a single result.
+Typical forms:
+Optional<T> reduce(BinaryOperator<T> accumulator) — no identity
+T reduce(T identity, BinaryOperator<T> accumulator) — with identity
+U reduce(U identity, Function<T,U> mapper, BinaryOperator<U> accumulator) — with mapping
+It's designed to be associative, enabling parallel processing safely
+Example 1: Sum of Integers (With Identity)
+List<Integer> nums = List.of(1, 2, 3, 4, 5);
+int sum = nums.stream()
+              .reduce(0, Integer::sum);
+System.out.println(sum); // ➝ 15
+
+Example 2: Longest String (No Identity)
+List<String> names = List.of("Alice", "Bob", "Catherine", "Dave");
+Optional<String> longest = names.stream()
+    .reduce((a, b) -> a.length() > b.length() ? a : b);
+longest.ifPresent(System.out::println); // ➝ Catherine
+No identity → returns Optional<String> Picks the longer of the two in each pair, finds the maximum by length
+
+--------------------------------------------------------------------------------------
+Collectors all Utility methods:
+1.Basic Collection
+toList() → Collects into a List<T> (typically mutable ArrayList):
+List<String> names = stream.collect(Collectors.toList());
+toSet() → Collects into a Set<T>, removing duplicates:
+Set<T> set = stream.collect(Collectors.toSet());
+toCollection(Supplier<C>) → Collects into a custom collection type:
+LinkedList<String> ll = stream.collect(Collectors.toCollection(LinkedList::new));
+
+2. String Joining
+joining(), joining(CharSequence delim), joining(delim, prefix, suffix)
+Concatenates string elements:
+List<String> items = Arrays.asList("ONE", "TWO", "THREE");
+String s = items.stream()
+        .collect(Collectors.joining(", ", "[", "]"));   // joining(delimiter, prefix, suffix) further wraps it in [...].
+System.out.println(s); // prints: [ONE, TWO, THREE]
+
+3. Counting, Summation & Averaging
+counting() → Long count of stream elements.
+summingInt/Long/Double(...) → Sum of mapped numeric values.
+averagingInt/Long/Double(...) → Average of mapped numeric values.
+summarizingInt/...Long/...Double(...) → Returns summary stats wrapper (IntSummaryStatistics, etc.)
+Example Counting:
+List<String> names = List.of("Alice", "Bob", "Charlie", "David");
+long count = names.stream()
+                  .collect(Collectors.counting());
+System.out.println("Count of names: " + count); // → 4
+
+Example Summation:
+List<Person> people = List.of(
+    new Person("Alice", 30),
+    new Person("Bob", 25),
+    new Person("Charlie", 35)
+);
+int totalAge = people.stream()
+    .collect(Collectors.summingInt(p -> p.age));
+System.out.println("Total Age: " + totalAge); // → 90
+
+Example Averaging:
+List<Product> products = List.of(
+    new Product("Laptop", 800.00),
+    new Product("Phone", 600.00),
+    new Product("Tablet", 300.00)
+);
+double avgPrice = products.stream()
+    .collect(Collectors.averagingDouble(p -> p.price));
+System.out.println("Average Price: " + avgPrice); // → ~566.67
+
+4. Min/Max & Reduction
+minBy(Comparator), maxBy(Comparator) → Finds min/max element.
+reducing(...) → General-purpose, flexible reduction (with or without identity and combiner).
+Example:
+List<Integer> numbers = List.of(5, 12, 3, 19, 7);
+Optional<Integer> min = numbers.stream()
+    .collect(Collectors.minBy(Comparator.naturalOrder()));
+// min = Optional[3]
+Optional<Integer> max = numbers.stream()
+    .collect(Collectors.maxBy(Comparator.naturalOrder()));
+// max = Optional[19]
+
+Example reduce
+No Identity → Returns Optional
+Optional<Integer> diff = Stream.of(5, 10, 20, 50).collect(Collectors.reducing((a, b) -> b - a));
+// diff = Optional[35], since (((50 − 20) − 10) − 5) = 15? Actually accumulation: (((5,10)→5),(5,20)→15),(15,50)→35.
+
+With Identity → Returns element type
+Integer product = Stream.of(5, 10, 20, 50).collect(Collectors.reducing(1, (a, b) -> a * b));
+// product = 5 * 10 * 20 * 50 = 50000
+
+With Mapper + Identity → Transform then reduce
+Integer sumOfSquares = Stream.of(1, 2, 3).collect(Collectors.reducing(0, x -> x * x, Integer::sum));
+// sumOfSquares = 1 + 4 + 9 = 14
+
+5. Grouping & Partitioning
+groupingBy(classifier) → Groups elements in a Map<K, List<T>>.
+groupingBy(classifier, downstream) → Nested collection + usual operations.
+partitioningBy(Predicate) → Splits into Map<Boolean, List<T>>.
+Example:
+List<String> words = List.of("a", "bb", "ccc", "dd");
+Map<Integer, List<String>> byLength =
+    words.stream()
+         .collect(Collectors.groupingBy(String::length));
+
+System.out.println(byLength);
+// → {1=[a], 2=[bb, dd], 3=[ccc]}
+
+
+Map<Integer, Set<String>> setByLength =
+    words.stream()
+         .collect(Collectors.groupingBy(
+             String::length,
+             Collectors.toSet()
+         ));
+
+System.out.println(setByLength);
+// → {1=[a], 2=[bb, dd], 3=[ccc]}
+
+Find the longest last name by city:
+class Person {
+  String city;
+  String lastName;
+  // constructor/getters
+}
+Comparator<String> byLength = Comparator.comparing(String::length);
+
+Map<String, String> longestLastNameByCity =
+    people.stream().collect(Collectors.groupingBy(
+      Person::getCity,
+      Collectors.reducing(
+        "",                    // identity
+        Person::getLastName,  // mapper
+        BinaryOperator.maxBy(byLength)
+      )
+    ));
+
+List<Integer> nums = List.of(1,2,3,4,5,6,7,8,9,10);
+Map<Boolean, List<Integer>> evensOdds =
+    nums.stream().collect(Collectors.partitioningBy(n -> n % 2 == 0));
+
+System.out.println(evensOdds);
+// → {false=[1,3,5,7,9], true=[2,4,6,8,10]}
+
+Map<Boolean, Long> countPartition =
+    nums.stream().collect(Collectors.partitioningBy(
+      n -> n % 2 == 0,
+      Collectors.counting()
+    ));
+
+System.out.println(countPartition);
+// → {false=5, true=5}
+
+
+
+6. Mapping, Filtering & FlatMapping
+mapping(mapper, downstream) → Applies a transform within a collect:
+stream.collect(Collectors.mapping(String::length, Collectors.toList()));
+filtering(predicate, downstream) → Pre-collect filter:
+stream.collect(Collectors.filtering(x -> x > 0, Collectors.toList()));
+flatMapping(mapper, downstream) → Applies flat-mapping before collecting:
+stream.collect(Collectors.flatMapping(list -> list.stream(), Collectors.toList()));
+
+7. Composed/Transformed Builders
+collectingAndThen(downstream, finisher) → Applies one final action after collect:
+List<String> unmod = stream.collect(
+  Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
+teeing(c1, c2, merger) (Java 12+) → Runs two downstream collectors and merges results
+stream.collect(Collectors.teeing(
+  Collectors.counting(),
+  Collectors.summingInt(Integer::intValue),
+  (count, sum) -> sum / count));
+  
+8. To Maps
+toMap(keyMapper, valueMapper) → Builds a Map<K, V>, fails on duplicate keys.
+Overloaded versions accept merge functions and supplier for different map types.
+
+9. Unmodifiable Collectors
+toUnmodifiableList(), toUnmodifiableSet(), toUnmodifiableMap() (Java 10+) → Produce truly immutable structures.
+
+-------------------------------------------------------------------------------------------------------------------------------------
+Collector Anatomy (Collector<T,A,R>)
+Each Collector defines:
+supplier() – Creates an empty result container (e.g., new ArrayList<>()).
+accumulator() – Adds an element into the container.
+combiner() – Merges two result containers (for parallel streams).
+finisher() – Final transformation (identity if not needed).
+characteristics() – Metadata about mutability, order, concurrency.
+Custom collectors can be created using Collector.of(...)
+
+1.Common Built-in Collectors:
+Basic Containers
+toList() → List<T>
+toSet() → Set<T>
+toCollection(...) → Custom Collection
+toMap() with value/key mappers (optionally merge function)
+
+Aggregation
+counting(), summingInt/Long/Double(...), averagingInt/...()
+summarizingInt/Long/Double(...) → returns summary stats (min, max, sum, avg, count) in one pass
+
+Element Selection
+maxBy(Comparator) / minBy(Comparator) → Optional<T>
+reducing(...) → flexible reduction using identity, accumulator, combiner
+
+String Joining
+joining(), with delimiter, prefix, suffix options → concatenates strings
+
+2.Grouping & Partitioning
+Groups elements by a classifier Function<T, K> producing a Map<K, List<T>>.
+With downstream collectors—for example counting, averaging, summarizing, mapping—to refine the values:
+Map<Dept, Long> countByDept = emp.stream()
+    .collect(Collectors.groupingBy(Employee::getDept, counting()));
+	
+partitioningBy(...)
+Specialized grouping into two buckets (true / false) based on a Predicate<T>.
+Can be combined with a downstream collector:
+
+Custom Collectors via Collector.of(...)
+When built-in collectors don’t suffice—e.g. gathering custom statistics or combining multiple metrics—you can define your own:
+
+Collector<Employee, Summary, Summary> summaryCollector =
+    Collector.of(
+      Summary::new,
+      Summary::add,
+      Summary::merge,
+      Collector.Characteristics.UNORDERED
+    );
+Summary result = employees.stream().collect(summaryCollector);
+
+Usage Patterns & Tips
+Use nested groupingBy for hierarchical reports (e.g. dept → role → salary band).
+Partition + downstream is powerful for splitting data and summarizing both subsets.
+Mapping + grouping cleanly extracts only needed values.
+Use summarizingInt/double when you need multiple statistics in one shot.
+Custom collectors with Collector.of avoid multiple stream passes.
+On performance: avoid excessive chained collectors or creating large intermediate collections; 
+for heavy use consider profiling streams and custom collectors to reduce GC overhead and parallel inefficiencies 
+Also, anecdotal advice from dev community emphasizes using 
+toMap(Person::getName, identity()) carefully—duplicate keys cause exceptions unless you handle merging explicitly
+
+| Collector                        | Description                                        |
+| -------------------------------- | -------------------------------------------------- |
+| `toList()`, `toSet()`            | Collect elements into collections                  |
+| `toMap(...)`                     | Create map from streams with key/value functions   |
+| `counting()`, `summingInt/...`   | Simple statistical aggregates                      |
+| `summarizingInt/...`             | Full `summary` statistics object                   |
+| `joining(...)`                   | Concatenate strings                                |
+| `maxBy()/minBy()`                | Find extreme values with comparator                |
+| `reducing(...)`                  | Generic reduction with combining function          |
+| `groupingBy(...)`                | Group elements into map by classifier              |
+| `partitioningBy(...)`            | Split into `true/false` groups                     |
+| `mapping(...)`, `filtering(...)` | Transform or filter elements in grouping (Java 9+) |
+| `flatMapping(...)`               | Flatten nested streams when grouping               |
+| `Collector.of(...)`              | Define custom collector with full control          |
+| `teeing(...)` (Java 12+)         | Combine two downstream collectors in one pass      |
+

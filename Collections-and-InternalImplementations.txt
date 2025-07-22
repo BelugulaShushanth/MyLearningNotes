@@ -1,0 +1,262 @@
+Iterable -> Collections
+Collections -> List -> ArrayList
+					-> LinkedList
+					-> Vector
+			-> AbstractCollections - > AbstractList -> Vector - >Stack	
+			-> Set -> HashSet
+				   -> LinkedHashSet	
+				   -> TreeSet (Implements SortedSet)
+				   -> EnumSet 
+				   -> BitSet
+			-> Queue	   
+Map is a separate interface it doesn't come under collections package
+Map -> HashMap
+	-> LinkedHashMap
+	-> TreeMap
+	-> EnumMap
+	-> IdentityHashMap
+	-> WeakHashMap
+	
+-----------------
+List:
+List is the ordered interface—allows duplicates.
+Use wrappers or factory methods for immutability or fixed size.
+
+1.ArrayList
+Backed by a dynamic array; supports fast random access—O(1) for .get(index).
+Auto-resizes when capacity exceeds; elements shift on insertion/removal in the middle 
+
+2.LinkedList
+Implemented as a doubly-linked list; optimal for frequent insertions/deletions, especially at ends—O(1).
+Slower for random access—O(n) to reach an index .
+Also implements Queue and Deque.
+
+3.Vector (legacy)
+Similar to ArrayList, but thread-safe (methods are synchronized).
+Outdated due to synchronization overhead 
+
+4.Stack (legacy)
+Extends Vector; implements LIFO stack with methods like push(), pop(), peek()
+
+5.CopyOnWriteArrayList (concurrent)
+Thread-safe; uses copy-on-write strategy—ideal for scenarios with many reads but 
+few writes (not in our search but a known JDK class).
+
+Frequent random reads -> ArrayList
+Frequent middle insert/remove -> LinkedList
+Thread-safe list with few writes -> CopyOnWriteArrayList
+Synchronization needed -> Vector or concurrent alternatives
+LIFO stack operations -> Deque (ArrayDeque) over legacy Stack
+Note: Deque (like ArrayDeque) is preferred over Stack for LIFO structures.
+
+-----------------------------------------------------------------------
+ArrayList Internal Implementation:
+1.Internally, ArrayList uses a transient Object[] elementData to store its elements
+2.new ArrayList() uses a shared empty array DEFAULTCAPACITY_EMPTY_ELEMENTDATA, and only allocates the 
+default capacity (10) when the first element is added
+3.new ArrayList(int initialCapacity) directly allocates an Object[] of that size, 
+or uses an empty array if you pass zero
+4.new ArrayList(Collection<? extends E> c) allocates based on c.size(), 
+copying its elements via Arrays.copyOf(...)
+5.Before each add(e), ArrayList checks if capacity is sufficient via ensureCapacityInternal(minCapacity)
+When full, grow(minCapacity) expands the array using:
+int oldCapacity = elemA modCount++ is used to track structural changes (helps with fail-fast iterators) 
+intData.length;
+int newCapacity = oldCapacity + (oldCapacity >> 1);
+if (newCapacity < minCapacity) newCapacity = minCapacity;
+elementData = Arrays.copyOf(elementData, newCapacity);
+This scales capacity by ~50% (1.5×) 
+This amortized doubling ensures that while individual resizes are O(n), the average cost per add remains O(1)
+After capacity is assured, the element is placed at elementData[size++].
+A modCount++ is used to track structural changes (helps with fail-fast iterators) 
+6.Removing Elements
+Removing Elements
+int newSize = size - 1;
+if (newSize > index)
+  System.arraycopy(es, index + 1, es, index, newSize - index);
+es[size = newSize] = null;
+modCount++;
+That shifts subsequent elements left and nullifies the old last slot; it does not shrink the array 
+7.ArrayList does not auto-shrink, so old capacity remains until you explicitly call trimToSize()
+8.Using Arrays.copyOf(...) is efficient as it uses System.arraycopy, which benefits from data locality and CPU caching
+get(index) / set(index)	O(1) random access
+add(e) (amortized adding at the end)	O(1) – behind the scenes
+add(e) (adding in the middle)	O(n)
+remove(index) / shift	O(n) due to copy
+contains(e) / indexOf(e)	O(n) linear search
+---------------------------------------------------------------------------------
+
+LinkedList Internal Implementation:
+1.Uses Doubly-linked structure with Node<E> holding: E item, Node<E> next, Node<E> prev
+2.LinkedList stores:Node<E> first, Node<E> last — fast access to both ends. Here first is head and last is tail
+int size — current count of elements, modCount — tracks structural changes for fail-fast iterators 
+3.add(E e) / addLast(E e):Time Complexity: O(1)
+Link new node to current last.
+update last (and first if list was empty).
+Increment size & modCount.
+4.addFirst(E e):Time Complexity: O(1)
+Insert at head in the same constant-time manner.
+5.add(int index, E e):Time Complexity: O(n) traversal + O(1) insertion → O(n)
+Traverse from first or last (whichever is closer) to reach index.
+Adjust pointers to splice in new node.
+6.get(int index) / set(int index, E e): Time Complexity: O(n) 
+Traverse to index using bidirectional search.
+Get or update data.
+7.removeFirst() / removeLast(): Time Complexity: O(1)
+Detach node at head/tail.
+Fix first or last and null pointers for GC.
+8.remove(int index):Time Complexity: O(n) (due to traversal)
+Navigate to node & unlink(node) – adjust pointers, decrement size.
+9.remove(Object o):Time Complexity: O(n) 
+Linear search for first matching node.
+Unlink upon match.
+10.Iterator.remove():Time Complexity: O(1)
+Works directly on current node.
+
+So to sum up..
+addFirst, addLast, add(E) -> O(1)
+removeFirst, removeLast ->	O(1)
+Iterator.remove() -> O(1)
+add(index, E), get(index), set(index, E) -> O(n)
+remove(index), remove(Object) -> O(n)
+contains(o), indexOf(o) -> O(n)
+When to use LinkedList: ?
+Ideal for frequent inserts or removals at both ends or when you use iterator-based modifications
+Not suited for performance-critical random access — prefer ArrayList in these cases 
+
+------------------------------------------------------------------------------------------------
+Vector Internal Implementation:
+1.Backed by an array: Like ArrayList, Vector stores elements in an internal Object[] elementData.
+2.Fully synchronized: Nearly all public methods (add, get, remove, etc.) are wrapped in synchronized, 
+ensuring thread-safety 
+3.Resizable with growth factor: By default, Vector doubles its capacity when full (new cap = oldCap * 2). 
+You can specify a custom capacityIncrement via the two-argument constructor .
+4.Supports Enumeration + Iterator: Legacy elements() returns non–fail-fast Enumeration; 
+(Enumeration is a java legacy used to interate over vector this is a fail safe iterator)
+modern iterator() is fail-fast via modCount tracking
+
+TimeComplexity:
+1.add(E e) (append): O(1) amortized—bottleneck is array resize, but every call is synchronized.
+2.get(index), set(index, E): O(1), with synchronization.
+3.add(index, E), remove(index): O(n)—requires shifting elements, still synchronized.
+4.remove(Object o), contains(o), indexOf(o): O(n) via linear search.
+5.size(), isEmpty(): O(1), synchronized.
+
+Advantage:
+1.Built-in thread safety: Synchronous locking on each method makes it safe for concurrent access—even if coarse-grained.
+2.Customizable growth strategy: Ability to define capacityIncrement for memory-control use cases 
+3.Legacy backwards compatibility: Available in older Java versions; supports Enumeration.
+Drawbacks:
+1.Performance penalty: Synchronization on every method adds overhead—even in single-threaded scenarios 
+2.Memory inefficiency: Doubling capacity may result in excess unused space compared 
+to scaling by 1.5× (used by ArrayList) .
+3.Leans on legacy patterns: Enumeration is outdated; modern code typically prefers ArrayList 
+or CopyOnWriteArrayList for thread-safe needs 
+4.Misleading thread safety: While methods are atomic, combined operations aren't necessarily 
+thread-safe, and bulk operations still require external synchronization.
+
+----------------------------------------------------------------------------------------------------------
+HashMap Internal Implementation:
+Hashmap stores key value pairs and not in insertion order.
+1.A HashMap maintains an array of buckets; each bucket can hold multiple entries.
+2. Here each bucket is a Node<K,V> which contains
+hash (an optimized hashCode)
+key, value
+next pointer for chaining within the same bucket 
+3.When creating a new HashMap with no arguments then the default size of the array of buckets is 16
+i.e Node<K,V>[] table -> with the size of 16 and load factor is 0.75
+Initial capacity = 16 because it's a power of two simplifies hashing and keeps performance efficient.
+4.LoadFactor = no of elements/ size of the table
+since the default load factor is 0.75 then the no of elements accepted is 12
+if the 13th element is inserted then the array size doubles to 32 and all entries are re hashed into new buckets(nodes)
+5.While adding a new element with key and value the hashmap uses the hash method to calculate the hashCode
+static final int hash(Object key) {
+    int h;
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);   // >>> means Unsigned (logical) right shift
+}
+Now the bucket(node) index is calulated
+int index = (n - 1) & hash; // n = current bucket array length
+Using bitwise AND is faster than modulo and requires the bucket array size to be a power of two
+6.After calculating the index a new node is created and is inserted at that index.
+7.Handling Collisions If two keys map to the same bucket(node) index (“collision”):
+	a)Before-Java 8: Entries were linked in a simple chain (linked list).
+	  If any different keys result in the same index then the new node is appended or prepended to the node present at that index
+	This makes the get and put costly.
+	get, put, remove -> Time complexity is o(n)
+	b)After Java8:  If too many colliding entries accumulate in one bucket (usually ≥8) 
+	and the bucket array is large enough (≥64 slots), that chain converts to a balanced RED - BLACK TREE, 
+	improving lookup times.
+	get, put, remove -> Time complexity is o(log n)
+8.A Red–Black Tree is a kind of self-balancing binary search tree equipped with a “color” (red or black) 
+on each node. These colors, along with key rules, keep the tree approximately balanced and 
+guarantee logarithmic height 
+Key Properties:
+Every node is red or black.
+The root is always black.
+All leaves (null pointers) are black.
+No red node has a red child.
+Every path from a node to its leaves contains the same number of black nodes (black-depth)
+	
+---------------------------------------------------------------------------------------------------------
+LinkedHashMap Internal Implementation
+LinkedHashMap<K,V> extends HashMap<K,V> and combines a hash table with a doubly linked list
+allowing it to maintain predictable iteration order—either by insertion or access 
+
+
+---------------------------------------------------------------------------------------------------------
+Collections Utility Class
+This class is packed with static methods for operating on or creating Collection objects (Lists, Sets, Maps):
+1.sort(List<T>) – Sorts in-place using natural ordering or a Comparator:
+2.binarySearch(List<T>, key) – After sorting, finds the index of key in O(log n) time:
+int pos = Collections.binarySearch(names, "Alice");
+3.reverse(List<?>), shuffle(List<?>), fill(List<?>, T):
+Collections.reverse(list);
+Collections.shuffle(list);
+Collections.fill(list, "x");
+4.min, max, frequency – Compute minimum, maximum, and count occurrences:
+T smallest = Collections.min(list);
+int count = Collections.frequency(list, element);
+5.Thread-safe wrappers: synchronizedList, synchronizedMap, etc.
+List<T> syncList = Collections.synchronizedList(myList);
+6.Immutable/singleton collections: unmodifiableList, singletonList, emptyList:
+List<String> readonly = Collections.unmodifiableList(myList);
+List<String> one = Collections.singletonList("only");
+---------------------------------------------------------------------------------------------------
+
+Arrays Utility Class
+Offers static operations for working with arrays—sorting, searching, copying, filling, comparing, and converting.
+1.sort() and parallelSort()
+sort(T[]), optionally with a Comparator.
+parallelSort (Java 8+) uses multiple threads for large primitive arrays
+2.binarySearch() – Binary search on sorted arrays in O(log n) time
+3.fill() – Assigns a value to all or a range in the array
+int[] arr = new int[5];
+Arrays.fill(arr, 2);
+System.out.println(Arrays.toString(arr)); // [2, 2, 2, 2, 2]
+4.Copying & subrange: copyOf, copyOfRange to duplicate or extract subarrays
+int[] src = {1, 2, 3};
+int[] copy1 = Arrays.copyOf(src, 5);
+System.out.println(Arrays.toString(copy1)); // [1, 2, 3, 0, 0]
+
+String[] names = {"Alice", "Bob"};
+String[] copy2 = Arrays.copyOf(names, 4);
+System.out.println(Arrays.toString(copy2)); // [Alice, Bob, null, null]
+
+int[] src = {10, 20, 30, 40, 50};
+int[] sub1 = Arrays.copyOfRange(src, 1, 4);
+System.out.println(Arrays.toString(sub1)); // [20, 30, 40]
+
+int[] sub2 = Arrays.copyOfRange(src, 3, 8);
+System.out.println(Arrays.toString(sub2)); // [40, 50, 0, 0, 0]
+
+5.asList(T...) – Wraps array as fixed-size List, backed by the original
+String[] arr = {"a", "b", "c"};
+List<String> list = Arrays.asList(arr);
+Returns a fixed-size list backed by the original array
+Mutating the list updates the array (and vice versa)
+Doesn't support add or remove (throws UnsupportedOperationException)
+
+6.Comparison & hashing:
+equals, deepEquals (multidimensional), hashCode, deepHashCode, compare, mismatch
+7.Representation & streaming:
+toString(), deepToString(), stream(), spliterator()

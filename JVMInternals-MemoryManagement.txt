@@ -1,0 +1,125 @@
+Java’s memory model divides memory into several key areas:
+1. Stack
+The Stack is crucial for managing method execution, storing method call frames, 
+local variables, and references to objects in the heap. Each thread has its own stack, 
+providing thread isolation and supporting concurrent execution.
+Characteristics of the Stack
+Local Variables and References: Local variables are stored in the stack. Here’s an example:
+public class Main {
+    public void methodA() {
+        int x = 5; // Stored in the stack
+        Car myCar = new Car(); // Reference is in the stack; object is in the heap
+    }
+}
+LIFO Memory Management: The stack follows a Last-In-First-Out (LIFO) approach. 
+Each method call adds a stack frame, and the frame is removed when the method completes.
+Important Notes:
+StackOverflowError: If the stack exceeds its allocated space (e.g., due to infinite recursion), a StackOverflowError occurs (ex: infinite recursion).
+Performance: Stack access is faster than heap access due to its simple structure, requiring no garbage collection.
+
+2. Heap
+The Heap is the main memory pool for dynamic allocation in Java, storing all objects created during runtime. 
+Java’s automatic garbage collection handles memory cleanup when objects are no longer referenced, making the heap essential for long-term storage.
+Characteristics of the Heap:
+Instance Variables and Object Allocation: When you create an object using new, it’s allocated on the heap. For example:
+class Car {
+    public String color;
+}
+
+public class Main {
+    public static void main(String[] args) {
+        new Car();         // Anew Car object Allocated on the heap, but its reference is not preserved! (not accesible/referenced) Garbage collection eligible): 
+        Car myCar;         // Reference type Varaiable (allocated on the stack) (pointing to null)
+        myCar = new Car(); // New Car object Allocated on the heap and its reference stored on myCar on the stack.
+        mycar.color = "Black"; // New String object allocated in heap and its reference is stored in instance reference variabl color of the object
+    }
+}
+
+Garbage Collection: Once objects lose references (e.g., after a variable goes out of scope), they become eligible for garbage collection.
+Important Notes:
+OutOfMemoryError: When the heap is full and cannot allocate new memory, Java throws an OutOfMemoryError.
+Access: Heap is Shared across all threads and accessible to every method call frame.
+Example: STACK vs Heap
+public class Example {
+    public void stackExample() {
+        int num = 10; // Stored in the stack
+        String text = "Hello"; // Reference is in the stack, but "Hello" (object of class String) is in Heap (in the string pool area)
+    }
+}
+
+3. Metaspace (Method Area / Class Area)
+The Metaspace stores metadata about loaded classes and methods, such as field information, method names, and constants. 
+Metaspace offers flexible memory allocation for class metadata.
+Characteristics of Metaspace
+Class Metadata: Metaspace stores class structures, including field and method information.
+Constant Pool: Stores constant values like method names and literals.
+Static Variables: Houses class-level static variables and constant data. For example:
+class Example {
+    static int count = 0; // Stored in Metaspace
+}
+Garbage Collection of Metaspace
+Unused classes can be unloaded and their memory reclaimed by the JVM when they are no longer referenced. 
+This is especially important for applications that load and unload many classes dynamically.
+
+Garbage Collection (GC)
+Garbage Collection is an automatic memory management process that frees memory occupied by unreferenced objects. 
+In Java, GC operates through a combination of minor and major collection cycles.
+
+Phases of Garbage Collection
+1.Marking: Identifies all live objects that are still referenced.
+2.Copying/Compacting: Moves live objects to reduce fragmentation and organize memory efficiently.
+3.Sweeping: Reclaims memory used by dead objects.
+
+While Java GC is automatic, you can request a garbage collection cycle using System.gc(), though this is just a suggestion to the JVM.
+
+public class Main {
+    public static void main(String[] args) {
+        Car myCar = new Car();
+        myCar = null; // Eligible for GC
+        System.gc();  // Request GC
+    }
+}
+
+Note: System.gc() does not guarantee immediate garbage collection. It merely suggests it to the JVM.
+
+Thread Stack (Call Stack)
+Each thread in Java has:
+Its own call stack (also known as the execution stack)
+This stack stores:
+Local variables (primitives and object references)
+Method call frames (for tracking execution)
+Return addresses and intermediate computations
+So when a thread is running, its data (like method-local variables) is stored in the thread's stack, which is private to that thread.
+
+Heap Memory (Shared)
+Objects that threads create or reference live in the heap
+The heap is shared across all threads
+So multiple threads can read/write the same object (which is why we need synchronization!)
+
++-----------------------------------------------------------+
+|                        Heap (Shared)                      |
+|  +-------------------+    +----------------------------+  |
+|  |  String "Hello"   |    |   MyObject@1234            |  |
+|  |  (used by Thread1)|    |   fieldA = 42              |  |
+|  +-------------------+    |   fieldB = "shared"        |  |
+|                           +----------------------------+  |
+|                    (shared across all threads)            |
++-----------------------------------------------------------+
+
+              |                         |
+              |                         |
+              v                         v
+
++----------------------+     +----------------------+
+|   Thread-1 Stack     |     |   Thread-2 Stack     |
++----------------------+     +----------------------+
+| MethodA() frame      |     | MethodX() frame      |
+|   int x = 5          |     |   int y = 10         |
+|   String s = "Hello" |     |   MyObject obj       |
+|   obj -> @1234       |     |   obj -> @1234       |
++----------------------+     +----------------------+
+
+ - Local variables and method calls live in each thread's stack.
+ - Object references (e.g., `obj`) point to data in the heap.
+ - Heap memory is shared; stacks are private to each thread.
+
