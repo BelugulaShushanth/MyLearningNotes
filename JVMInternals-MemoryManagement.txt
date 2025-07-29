@@ -1,3 +1,25 @@
+ClassLoader Substem:
+The Java Class Loader Subsystem is a critical component of the 
+Java Virtual Machine (JVM) responsible for dynamically(lazy) loading classes during runtime. 
+It ensures that classes are loaded only when needed, facilitating efficient memory management and 
+supporting features like reflection and dynamic class loading.
+
+Class Loading Process
+The class loading process involves three main phases:
+Loading: The JVM locates and reads the binary data of a class, typically from a .class file or a JAR archive.
+Linking: This phase includes:
+	Verification: Ensures the bytecode adheres to JVM specifications and is safe to execute.
+	Preparation: Allocates memory for class variables and sets them to default values.
+	Resolution: Replaces symbolic references in the class with direct references to other classes and methods
+Initialization: Static variables are assigned their proper values, and static blocks are executed in the order they appear in the source code
+
+Bootstrap Class Loader: The foundational class loader, written in native code, 
+loads core Java libraries located in the <JAVA_HOME>/jre/lib directory.
+Extension Class Loader: Loads classes from the extension directories specified by the java.ext.dirs system property.
+System/Application Class Loader: Loads classes from the application's classpath, 
+typically defined by the CLASSPATH environment variable.
+
+-----------------------------------------------------------------------------------------------------------------------------
 Java’s memory model divides memory into several key areas:
 1. Stack
 The Stack is crucial for managing method execution, storing method call frames, 
@@ -20,32 +42,6 @@ Performance: Stack access is faster than heap access due to its simple structure
 2. Heap
 The Heap is the main memory pool for dynamic allocation in Java, storing all objects created during runtime. 
 Java’s automatic garbage collection handles memory cleanup when objects are no longer referenced, making the heap essential for long-term storage.
-Characteristics of the Heap:
-Instance Variables and Object Allocation: When you create an object using new, it’s allocated on the heap. For example:
-class Car {
-    public String color;
-}
-
-public class Main {
-    public static void main(String[] args) {
-        new Car();         // Anew Car object Allocated on the heap, but its reference is not preserved! (not accesible/referenced) Garbage collection eligible): 
-        Car myCar;         // Reference type Varaiable (allocated on the stack) (pointing to null)
-        myCar = new Car(); // New Car object Allocated on the heap and its reference stored on myCar on the stack.
-        mycar.color = "Black"; // New String object allocated in heap and its reference is stored in instance reference variabl color of the object
-    }
-}
-
-Garbage Collection: Once objects lose references (e.g., after a variable goes out of scope), they become eligible for garbage collection.
-Important Notes:
-OutOfMemoryError: When the heap is full and cannot allocate new memory, Java throws an OutOfMemoryError.
-Access: Heap is Shared across all threads and accessible to every method call frame.
-Example: STACK vs Heap
-public class Example {
-    public void stackExample() {
-        int num = 10; // Stored in the stack
-        String text = "Hello"; // Reference is in the stack, but "Hello" (object of class String) is in Heap (in the string pool area)
-    }
-}
 
 3. Metaspace (Method Area / Class Area)
 The Metaspace stores metadata about loaded classes and methods, such as field information, method names, and constants. 
@@ -53,42 +49,19 @@ Metaspace offers flexible memory allocation for class metadata.
 Characteristics of Metaspace
 Class Metadata: Metaspace stores class structures, including field and method information.
 Constant Pool: Stores constant values like method names and literals.
-Static Variables: Houses class-level static variables and constant data. For example:
-class Example {
-    static int count = 0; // Stored in Metaspace
-}
+Static Variables: static variables and constant data.
+
 Garbage Collection of Metaspace
 Unused classes can be unloaded and their memory reclaimed by the JVM when they are no longer referenced. 
 This is especially important for applications that load and unload many classes dynamically.
-
-Garbage Collection (GC)
-Garbage Collection is an automatic memory management process that frees memory occupied by unreferenced objects. 
-In Java, GC operates through a combination of minor and major collection cycles.
-
-Phases of Garbage Collection
-1.Marking: Identifies all live objects that are still referenced.
-2.Copying/Compacting: Moves live objects to reduce fragmentation and organize memory efficiently.
-3.Sweeping: Reclaims memory used by dead objects.
-
-While Java GC is automatic, you can request a garbage collection cycle using System.gc(), though this is just a suggestion to the JVM.
-
-public class Main {
-    public static void main(String[] args) {
-        Car myCar = new Car();
-        myCar = null; // Eligible for GC
-        System.gc();  // Request GC
-    }
-}
-
-Note: System.gc() does not guarantee immediate garbage collection. It merely suggests it to the JVM.
 
 Thread Stack (Call Stack)
 Each thread in Java has:
 Its own call stack (also known as the execution stack)
 This stack stores:
-Local variables (primitives and object references)
-Method call frames (for tracking execution)
-Return addresses and intermediate computations
+1.Local variables (primitives and object references)
+2.Method call frames (for tracking execution)
+3.Return addresses and intermediate computations
 So when a thread is running, its data (like method-local variables) is stored in the thread's stack, which is private to that thread.
 
 Heap Memory (Shared)
@@ -123,3 +96,200 @@ So multiple threads can read/write the same object (which is why we need synchro
  - Object references (e.g., `obj`) point to data in the heap.
  - Heap memory is shared; stacks are private to each thread.
 
+--------------------------------------------------------------------------------------------------------------------------------
+Garbage Collection:
+Garbage Collection (GC) is Java’s automatic way of reclaiming memory used by objects 
+that are no longer reachable by the application. It helps prevent memory leaks and ensures efficient use of heap space.
+
+1. Mark‑Sweep
+How it works?
+Mark phase: Traverse from GC roots and mark live objects.
+Sweep phase: Reclaim memory of unmarked (dead) objects. 
+
+Pros:Simple, requires minimal extra memory (only a mark bit).
+Cons:Leads to memory fragmentation, making it hard to allocate large contiguous blocks later.
+
+2. Copying (Mark‑Copy)
+How it works?
+Split memory into two halves: from-space and to-space.
+During GC, copy live objects from the full half to the empty one. Clear the old half and swap roles.
+
+Pros: Eliminates fragmentation since live objects are compacted together. Efficient allocation via simple pointer bumping.
+Cons:Uses only half the heap at a time, resulting in high memory overhead
+
+3.Mark‑Compact (Mark‑Sweep‑Compact)
+How it works?
+Mark live objects (same as Mark-Sweep).
+Sweep to identify free areas.
+Compact by moving live objects toward one end of the heap.
+
+Update all references to reflect new object locations.
+
+Pros:Combines advantages: no fragmentation + full heap usage.
+Cons:Computationally heavier due to relocation and pointer updates, causing longer pause times.
+
+4.Generational Collection Algorithm:
+Heap:
+┌────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│                       Young Generation (1/3)               │             Old Generation (2/3)                 │
+│    ┌──────────────┬──────────────────┐                     │                                                  │
+│    │    Eden      │ From Survivor    │ To Survivor         │                   ...                            │
+│    │  (8/10 YG)   │    (1/10 YG)     │    (1/10 YG)        │                                                  │
+│    └──────────────┴──────────────────┴───────────────┘     │                                                  │
+└────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+Heap space is divided into Young generation (1/3) and Old generation (2/3).
+Within the Young generation, memory is further subdivided as follows:
+Eden: 8/10 of the Young generation
+From Survivor: 1/10 of the Young generation
+To Survivor: 1/10 of the Young generation
+Thread local allocation buffer (TLAB): This is used to speed up the object allocation in heap(specifically eden)
+Each thread gets its own memory region for object creation only—this is about where objects go in memory, not what they do afterward.
+
+1.Young Generation
+Eden Space: All new objects are allocated here.
+Survivor Spaces: Two equal partitions—From and To. 
+After each Minor GC, live objects from Eden and the older Survivor are copied to the other Survivor space, avoiding fragmentation
+This repeated process (Eden → To, then To → From, etc.) keeps objects alive temporarily without prematurely moving them to the 
+Old Generation. It also ensures one Survivor is always empty, enabling fast copying instead of costly compaction
+
+Why Survivor Spaces?
+1.Prevent premature promotion of objects that will soon die.
+2.Avoid wasting space and frequent Major GCs.
+3.Dual Survivor spaces enable copying GC, which avoids fragmentation by always copying live objects into one clean space
+
+Why Pair of Survivors?
+Only two allow one to be “empty” for copying while the other is live.
+More than two would mean smaller spaces, higher fill rates, and frequent early promotion
+
+2. Old (Tenured) Generation
+Objects that survive multiple Minor GCs (default ~15) or are too big are promoted here 
+Old Gen is larger and cleared less frequently during Major or Full GCs, 
+which involve more time-consuming operations like Mark-Sweep-Compact.
+
+Promotional Rules:
+1.Objects survive ~15 cycles in Young Gen → promote 
+2.If Survivor fills up early, objects may be prematurely promoted to Old Gen.
+3.Very large objects (based on size threshold) skip Young Gen and go straight to Old Gen 
+4.JVM may also use dynamic thresholds if a certain age group dominates Survivor, those objects may be promoted early.
+
+Why This Design?
+1.Generational GC takes advantage of the fact that most objects die young, so collecting small regions (Young Gen) is fast and efficient 
+2.Survivor spaces lessen unnecessary promotions to Old Gen and avoid heap fragmentation through copy-based GC 
+3.Using two Survivor spaces lets the JVM copy to a clean area every cycle, keeping memory contiguous and efficient
+
+Java's Garbage Collectors:
+1.Serial GC (-XX:+UseSerialGC)
+Young Generation: Single-threaded Copying collector (Eden + Survivor spaces).
+Old Generation: Mark‑Compact collector (compacts live objects to avoid fragmentation) 
+When to Use: Opt for this when running on single-core machines or when simplicity and low overhead are paramount.
+
+2.Parallel GC (-XX:+UseParallelGC) and Parallel Old GC
+Young Generation: Parallel Copying collector using multiple threads.
+Old Generation: Parallel Mark‑Compact collector (Parallel Old variant uses multiple threads) 
+When to use: Ideal for applications that can tolerate longer pauses but require high throughput, such as batch processing tasks.
+
+3.CMS (Concurrent Mark-Sweep) (-XX:+UseConcMarkSweepGC)
+Young Generation: Parallel Copying collector same as Parallel GC.
+Old Generation: Concurrent Mark‑Sweep collector that does not compact the old gen; fragmentation may occur. 
+When to use: Suitable for applications that need low-latency performance and can handle occasional full GCs. 
+Note that CMS is deprecated in Java 9 and removed in Java 14.
+
+4. G1 GC (-XX:+UseG1GC, default since Java 9+)
+G1 is a modern GC designed for large heaps (multiple GB) on multiprocessor servers—it became the default GC since Java 9
+diveds heap into smaller regions ranging from(1MB to 32MB) 
+each of which can be independently assigned as Eden, Survivor, or Old generation memory
+Its main goal: predictable pause times (you can set a pause-time goal, e.g. 200 ms) while still cleaning up efficiently
+ 
+Young Generation: Region-based Copying/Evacuating collector (evacuates live objects from Eden + Survivor regions).
+Old Generation: Concurrent Mark‑Compact via evacuation of entire regions (compacts high-garbage regions). 
+When to use: Recommended for applications with large heaps that require predictable pause times. 
+It's the default in Java 9 and later.
+
+
+5. ZGC (-XX:+UseZGC) and Generational ZGC (-XX:+ZGenerational)
+Non-generational ZGC: Treats heap as one, concurrent mark and concurrent compaction, no generational separation.
+Generational ZGC (Java 21+): Uses separate generational structure:
+Uses pointers carry metadata ("colors") to indicate state changes like relocation.
+ZGC uses unused bits in a 64-bit reference to store metadata flags.
+The pointer is split into:
+ 1. 42 bits for the actual memory address
+ 2. 4 metadata bits (e.g., Marked0, Marked1, Remapped, Finalizable) used by the GC to track object state.
+ 3. The remaining 18 bits reserved for future use or hardware support 
+Only one of these flags is active at a time, indicating the object's state during a GC cycle
+
+A lightweight barrier intercepts pointer use and, if needed, redirects to the new location—all concurrently,
+without pausing application threads 
+
+Young Generation: Concurrent, ultra-low pause reclamation of short-lived objects
+Old Generation: Concurrent, compacting collection of long-lived objects, all using colored pointer barriers.
+When to use: Best for applications with very large heaps and stringent low-latency requirements.
+---------------------------------------------------------------------------------------------------------------------------------------
+What is a memory leak? where memory leak might occur? Best practices to avoid memory leaks..
+
+A memory leak occurs when a program unintentionally retains references to objects that are no longer needed, 
+preventing the JVM’s garbage collector from reclaiming that memory. Despite Java's automatic memory management, 
+leaks can still happen when objects remain accessible via strong references
+
+1. Static Collections & Fields
+Problem: Data stored in static fields lives for the entire application lifetime, preventing GC cleanup.
+Solution: Avoid static mutable collections; if used (like caches), 
+clear them or store entries as weak references (WeakHashMap) so unused data can be collected.
+
+2. ThreadLocal Misuse
+Problem: ThreadLocal values on pooled threads persist across tasks unless explicitly removed, causing large memory footprints.
+Solution: Always call threadLocal.remove() in a finally block after use (especially in thread pools).
+
+3. Unremoved Event Listeners & Callbacks
+Problem: Listeners that are registered (e.g., UI callbacks) but not unregistered hold references to objects, preventing their GC.
+Solution: Deregister listeners when no longer needed or use weak references for listener registration.
+
+4. Non-Static Inner/Anonymous Classes
+Problem: Inner classes implicitly retain a reference to their enclosing instance, 
+which can prevent GC when the inner class outlives the outer.
+Solution: Use static nested classes or stand-alone classes to avoid unintended references.
+
+5. Unbounded Collections & Improper equals()/hashCode()
+Problem: Collections that grow without bounds (like ArrayList, HashMap) never clean up stale entries; 
+in hash collections, bad equals/hashCode can lead to hidden memory retention.
+Solution: Set size limits, clear unused entries, or use eviction strategies; 
+ensure custom keys correctly implement equals() and hashCode().
+
+Note: Regularly profile your app using tools like VisualVM, Eclipse MAT, 
+or Java Flight Recorder to detect leaks early and step through heap dumps.
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Execution Engine Components
+1. Interpreter
+Reads bytecode one instruction at a time and executes it directly.
+Fast startup, but slow for frequently executed code because each instruction is processed anew every time it's encountered 
+HotSpot uses a template-based interpreter: instead of pure software dispatch, each opcode is tied to a native-machine stub for speed 
+
+2. Just-In-Time (JIT) Compiler
+Monitors executed methods with a profiler.
+Profiling:runtime analysis technique that collects data about the application's behavior, 
+such as method invocation frequencies, execution times, and memory usage
+Once a method becomes “hot” (exceeds thresholds), it compiles the method’s bytecode into optimized native machine code.
+This native code is cached and invoked directly, bypassing the interpreter for subsequent calls 
+JIT typically involves:
+ Intermediate code generation:
+ Optimizations (inlining, escape analysis, dead code elimination)
+ Target code generation (producing executable machine code) 
+
+What Is JNI?
+The Java Native Interface (JNI) is a framework that allows Java code running in a Java Virtual Machine (JVM) 
+to interact with applications and libraries written in other languages. 
+It enables Java programs to call native methods, which are implemented in languages like C or C++, and vice versa
+
+public class NativeExample {
+    public native void sayHello();
+    static {
+        System.loadLibrary("nativeLib");
+    }
+}
+
+Native Method Libraries: These are shared libraries (e.g., .dll on Windows, .so on Linux) 
+that contain the implementations of the native methods.
+
+JNI Functions: The JVM provides a set of functions (e.g., GetStringUTFChars, CallVoidMethod) to 
+interact with Java objects and invoke Java methods from native code

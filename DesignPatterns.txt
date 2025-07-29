@@ -1,0 +1,36 @@
+Design Patterns
+A software design pattern is a generalized, reusable solution template for a commonly occurring problem in software design.
+Not a ready-made code snippet, but a blueprint you adapt to your particular context
+
+There are many different types of design patterns, each addressing a specific problem or set of problems.
+Some common types of design patterns include 
+Creational patterns, which deal with object creation; 
+Structural patterns, which focus on object composition and organization
+Behavioral patterns, which deal with the communication between objects and classes.
+
+Creational Patterns:
+1.Singleton Pattern
+Singleton ensures that a class has only one instance across the application and provides a global access point to it. 
+It’s often used for managing shared resources (e.g. logging, configuration, connection pools)
+a)Eager Initialization
+Instance is created at class loading time.
+Thread-safe by default (JVM handles synchronization).
+Downside: wasted resources if never used 
+b)Lazy Initialization (Not Thread‑Safe)
+Instance is created only when needed, 
+but multiple threads invoking getInstance() simultaneously can end up creating multiple instances—not thread-safe
+c)Synchronized Accessor (Thread‑Safe, Lazy)
+Guarantees thread safety via synchronization, but imposes performance overhead on every call—even after initialization
+d)Double‑Checked Locking (Efficient & Thread‑Safe, Lazy)
+Combines lazy loading with performance: synchronization only during the first creation.
+Uses volatile for safe visibility under the Java Memory Model
+e)Initialization‑on‑Demand Holder Idiom (Bill Pugh Singleton)
+Inner static class Holder is not initialized until getInstance() is called.
+Ensures lazy initialization, thread safety, and no synchronization overhead 
+f)Enum Singleton
+The Enum Singleton in Java is widely considered the most robust and elegant way to implement the Singleton pattern. 
+Thread‑safe by default:Java ensures enum constants are instantiated exactly once at class load time, using internal synchronization; no custom locking needed 
+Serialization-safe — Enums preserve singleton identity during serialization/deserialization automatically; no readResolve() required 
+Reflection-resistant — Java prevents reflective instantiation of enums, blocking one common way to break singleton protection 
+Clone-proof — Enum types cannot be cloned (their clone() is implicitly final or unsupported), preventing copy-based duplication 
+Clean & minimal code — Just declare a single enum constant; all lifecycle and safety guarantees are handled by the JVM with no extra boilerplate 
