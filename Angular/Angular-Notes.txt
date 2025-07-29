@@ -1,0 +1,223 @@
+Angular is a TypeScript-based, free and open-source single-page web application framework led by the Angular Team
+at Google and by a community of individuals and corporations. Angular is a complete rewrite from the same team that
+built AngularJS.
+
+Component: 
+In Angular, a Component is a piece of code that represents a view. 
+It is responsible for rendering the content and handling user interactions with the view. 
+Component(.component.ts) = HTML(.component.html) + STYLE(.component.css) + TS CODE
+Module:
+A Module is a container for a group of related components and directives. 
+A Component is a class with an associated template that defines a view
+
+Sample Component:
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent {
+  title = 'Shushanth hello-world 18';
+}
+
+@Component makes this TS file as a component
+selector -> whatever defined in selector is used in the html like <app-root> </app-root>
+templateUrl -> is used to mention the path of the html
+
+
+the field title is rendered in html this is called Interpolation:
+Example: <span>{{ title }} app is running!</span>
+
+Sample Module:
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+
+@NgModule({
+  declarations: [
+    AppComponent
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+
+commands:
+1. ng new app-name  ->  to create a new angular project
+2. ng serve -> to start the angular project on a server
+3. ng build -> to build angular project this will create a dist folder with modules which can be packaged
+4. ng generate component component-name -> this will create a component
+
+sample component with class and variables:
+
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-welcome',
+  templateUrl: './welcome.component.html',
+  styleUrls: ['./welcome.component.css']
+})
+export class WelcomeComponent {
+
+  name : String = 'sushanth'
+  age : number = 25
+
+  constructor(){
+    
+  }
+
+}
+=>Data binding:
+Example code to populate data from ts to html
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css']
+})
+export class LoginComponent {
+
+  username : String = "username"
+  password: String = "password"
+
+  handleLogin(){
+    console.log(this.username);
+  }
+}
+
+<div>
+    <label>Username: </label>
+    <input type="text" name="username" value="{{ username }}"><br><br>
+    <label>Password: </label>
+    <input type="password" name="password" value="{{ password }}"><br><br>
+    <input type="submit" value="Login" name="loginUser" (click)=handleLogin()>
+</div>
+
+=>Two way data binding:
+Example code to take data from html and populate it in TS and vice versa
+<div>
+    <label>Username: </label>
+    <input type="text" name="username" [(ngModel)]="username"><br><br>
+    <label>Password: </label>
+    <input type="password" name="password" [(ngModel)]="password"><br><br>
+    <input type="submit" value="Login" name="loginUser" (click)=handleLogin()>
+</div>
+and also we need to import ng model(which comes from forms module) in app module
+import { FormsModule } from '@angular/forms'
+@NgModule({
+  declarations: [
+    AppComponent,
+    WelcomeComponent,
+    LoginComponent
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule,
+    FormsModule    // -> here we need to add FormsModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+
+->To loggically render html tags
+<small style="color: red;" *ngIf='invalidLogin'>{{ errorMsg }} </small>
+*ngIf -> is the angular attribute used to render html elements logically
+
+=>Routing
+routing is implemented in app-routing.module.ts
+const routes: Routes = [
+  {path : '', component : LoginComponent},
+  {path : 'login', component : LoginComponent},  // -> here /login points to LoginComponent
+  {path: 'welcome', component : WelcomeComponent}
+];
+also in app-component.html we need to add this 
+<router-outlet></router-outlet>
+
+
+=>To Navigate from one page to other page using Angular Router
+first we need to have router object available to component to naviagate
+to get router obeject we use constructor dependency injection
+import { Router } from '@angular/router';
+constructor(private router: Router){}
+this.router.navigate(['welcome'])
+
+=>How to read params from url
+first we need mention in app router that a url will accept params
+const routes: Routes = [
+  {path : '', component : LoginComponent},
+  {path : 'login', component : LoginComponent},
+  {path: 'welcome/:name', component : WelcomeComponent},  // -> here :name is the param
+  {path : '**', component : PageNotFoundComponent}
+];
+to read the param in welcome component we use ActivatedRoute
+import { ActivatedRoute } from '@angular/router';
+constructor(router : ActivatedRoute){
+    this.name = router.snapshot.params['name']; 
+}
+
+Directives:
+Directives are meant to be a function that executes when found in the DOM by the Angular compiler to extend 
+the power of the HTML with new syntax. Directives have a name and can be predefined or custom-defined so that
+ they can be called anything. Depending on the predefined directive, its use is determined – attribute, comment,
+ element, or class.
+
+Let’s consider each of these Angular Directive types separately.
+
+Component Directive
+Special directives in Angular are called Components since this type of directive 
+has a template or template URLs. In effect, it is a component directive that shows something in DOM.
+
+Structural Directive
+This type of directive is used to make changes in the layout of the DOM. Elements can be added or 
+removed, hence changing the structure of the DOM. An example would be *ngIf(adding or removing element from DOM) or *ngFor(lists elements of every iteration).
+
+Attribute directive
+This type of angular directive is used to make behavior or element changes in the appearance and behavior 
+of an element. For example, ngStyle( applying styles) or ngClass(applying CSS classes).
+
+Example of custom directive:
+import{Directive, ElementRef, HostListener} from '@angular/core';
+
+@Directive({
+
+selector:'[highlight]',
+
+})
+
+export class HighlightDirective{
+
+constructor (private eleRef: ElementRef){ }
+
+@HostListerner ('mouseover') on MouseOver(){
+
+this.eleRef.nativeElement .style.color ='green';
+
+}
+
+@hostListener('mouseleave') onMouseLeave(){
+
+this.eleRef.nativeElement.style.color='black' ;
+
+}
+
+}] 
+
+Decorators:
+Decorators are design patterns or functions that define how Angular features work. 
+They make prior modifications to a class, service, or filter.
+
+Angular supports four types of decorators:
+
+Class decorators
+Property decorators
+Method decorators
+Parameter decorators
