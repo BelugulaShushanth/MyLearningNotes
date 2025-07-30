@@ -41,7 +41,11 @@ start()	It is used to start the execution of the thread.
 run()	It is used to do an action for a thread.
 sleep()	It sleeps a thread for the specified amount of time.
 currentThread()	It returns a reference to the currently executing thread object.
-join()	It waits for a thread to die.
+join()	It waits for a thread to die. when you call t.join(), the current thread waits for thread t to finish before proceeding
+Why Use join()?
+Synchronization of operations: Ensures that one task finishes before another starts.
+Sequential execution control: Use it when the result of one thread is needed before the next step.
+Prevent premature termination of main thread: If you start background threads but exit the main thread too early, join() ensures all threads complete
 getPriority()	It returns the priority of the thread.
 setPriority()	It changes the priority of the thread.
 getName()	It returns the name of the thread.
@@ -57,6 +61,8 @@ isDaemon()	It tests if the thread is a daemon thread.
 setDaemon()	It marks the thread as daemon or user thre
 interrupt()	It interrupts the thread.
 isinterrupted()	It tests whether the thread has been interrupted.
+wait(): Releases the lock (monitor) on obj.
+Enters the waiting state, and stays until it is awakened via notify() or notifyAll() on the same object or until it times out
 Find more here: https://www.javatpoint.com/multithreading-in-java
 
 How to create a thread in Java
@@ -324,3 +330,301 @@ Important methods of Java Runtime class
 5)	public int availableProcessors()	returns no. of available processors.
 6)	public long freeMemory()	returns amount of free memory in JVM.
 7)	public long totalMemory()	returns amount of total memory in JVM.
+
+Concurrency deep dive:
+java.util.concurrent
+
+Runnable:
+Declares a single method: void run()—no return value and no checked exceptions allowed 
+Implemented since Java 1.0 and located in java.lang 
+Can execute on its own via new Thread(runnable).start(), or be submitted to an ExecutorService 
+Good for “fire-and-forget” tasks where no result or checked exception handling is required.
+
+Callable:
+Declares: V call() throws Exception—returns a value of type V and can throw checked exceptions 
+Introduced in Java 1.5, inside java.util.concurrent 
+Meant to be executed via an ExecutorService.submit(...), returning a Future<V> from which the result can be obtained using future.get() 
+Ideal when you need a task to return a result or throw a checked exception
+
+1.Executor Interface
+The Executor interface is the simplest: it defines only one method:
+void execute(Runnable command);
+It abstracts over tasks execution: instead of creating a new Thread, you call executor.execute(runnable). 
+The implementation might run the task immediately, schedule it, or queue it for execution by worker threads
+
+2.ExecutorService – Advanced Execution and Lifecycle Control
+Core Features
+ExecutorService extends Executor and adds:
+Task submission supporting Runnable or Callable<T>, returning a Future<T>.
+Bulk task execution: invokeAll(...), invokeAny(...).
+Lifecycle management methods: shutdown(), shutdownNow(), awaitTermination(...)
+
+Methods in ExecutorService:
+a)execute() -> is a fire and forgot won't return any data, accepts runnable interface implementation
+Example: executor.execute(() -> System.out.println("Hello Runnable"));
+
+b)submit() -> returns a Future object, accepts runnable or callable interface implementation
+Example: 
+Future<?> f1 = executor.submit(() -> System.out.println("Task"));
+Why does submit(Runnable) still return a Future<?>?  (Accepting a runnable interface but returing future obj)
+The returned Future<?> allows you to:
+Check if the task is complete: future.isDone()
+Cancel the task: future.cancel(true)
+Block until it finishes (even if it returns null) via future.get()
+
+Future<String> f2 = executor.submit(() -> "Result", "Done");
+Future<Integer> f3 = executor.submit(() -> 1 + 2);
+
+c)invokeAll() runs a batch and waits for all:
+List<Callable<String>> tasks = Arrays.asList(task1, task2, task3);
+List<Future<String>> results = executor.invokeAll(tasks);
+
+d)invokeAny() returns result of the first successful task:
+String result = executor.invokeAny(tasks);
+
+e)shutdown() — Orderly (Graceful) Shutdown
+Stops accepting new tasks, but lets already submitted (running or queued) tasks complete normally. 
+Does not interrupt threads that are already executing. 
+Doesn’t block by itself—you’d typically call awaitTermination(timeout, unit) to wait until the executor actually terminates
+
+f)shutdownNow() — Forceful (Immediate) Shutdown
+Immediately stops accepting new tasks and:
+Attempts to interrupt active tasks (usually by calling Thread.interrupt()).
+Skips all tasks that were submitted but not yet started.
+Returns the list of those pending unstarted tasks. 
+This is a best-effort approach—no guarantee that running tasks actually stop, especially if they fail to respond to interruptions
+
+isShutdown() → executor won’t accept new tasks then returns true
+isTerminated() → all tasks have finished and threads terminated then returns true
+
+e)awaitTermination()
+Only works after calling shutdown() or shutdownNow()
+awaitTermination(timeout, unit) waits for tasks to finish after the executor has been asked to shut down.
+Without shutdown, it will wait the full timeout regardless of task completion
+Blocks until one of these happens (whichever occurs first):
+Executor terminates (all tasks finished)
+Timeout expires
+Calling thread is interrupted
+
+Implementations of ExecutorService
+a)newFixedThreadPool(n):fixed number of threads (e.g. CPU-bound tasks).
+b)newCachedThreadPool(): dynamically sized (good for short-lived tasks).
+c)newSingleThreadExecutor(): single-threaded serial execution.
+
+3.ForkJoinPool
+A specialized ExecutorService designed for recursive, divide‑and‑conquer tasks using work‑stealing: 
+idle threads steal subtasks from busy ones to maximize CPU utilization
+Uses a ForkJoinTask, with two main types:
+RecursiveTask<V>: returns a value
+RecursiveAction: returns nothing
+It’s ideal for CPU-bound workloads that can be split into parallel subtasks.
+
+Working..?
+Uses internal deque per worker thread, using LIFO to allow fast local task retrieval
+If idle a thread steals from others (FIFO from other’s deque).
+When tasks join or block, the pool may spawn compensatory threads up to the parallelism level to avoid idling.
+
+You can submit fork-join tasks via:
+fork() then join()
+invoke() — starts and waits, simpler
+invokeAll(...) — forks multiple tasks and returns Futures
+
+Ideal for:
+CPU-bound tasks split recursively (e.g. mergesort, matrix computations)
+Parallel stream operations or CompletableFuture pipelines (default uses commonPool)
+
+Not ideal for:
+I/O-bound or blocking tasks—this can exhaust worker threads or require custom ManagedBlocker to allow compensation.
+If mixing CPU and I/O work, consider offloading blocking parts via ForkJoinPool.managedBlock(...)
+WorkStealingPool: 
+Executors.newWorkStealingPool(int parallelism) returns an ExecutorService, 
+actually backed by a ForkJoinPool with the specified parallelism level
+
+Internally, it’s equivalent to:
+new ForkJoinPool(
+  parallelism,
+  ForkJoinPool.defaultForkJoinWorkerThreadFactory,
+  null,
+  /*asyncMode=*/ true
+);
+Meaning:
+Worker threads may steal tasks from other queues.
+It's set to operate in asynchronous mode (asyncMode=true), optimized for event-style or non-joinable tasks
+newWorkStealingPool just wraps a ForkJoinPool configured for work-stealing and async task processing
+ForkJoinPool.commonPool() uses a default parallelism (typically CPU core count minus one).
+newWorkStealingPool(parallelism) lets you manually define parallelism, create isolated pools, and avoid interfering with commonPool() tasks
+When to Use Each?
+Executors.newWorkStealingPool(...):
+Great for asynchronous, non-blocking, event-style workloads like submitting many Runnables or Callables that don't require join().
+ForkJoinPool (common or custom):
+Ideal for divide-and-conquer, recursive tasks using ForkJoinTask (like RecursiveTask<V> or RecursiveAction).
+Excellent for CPU-bound workloads where subtasks spawn and join frequently 
+
+4.ThreadPoolExecutor (Core ExecutorService)
+A powerful, configurable thread pool implementation that executes Runnable and Callable tasks asynchronously using worker threads
+Key Configurations & Behavior:
+Thread limits: Controlled by corePoolSize, maximumPoolSize, keepAliveTime and work queue policy.
+If fewer than corePoolSize threads are active → new threads created.
+Otherwise tasks queued; only if queue full and current threads < maximumPoolSize, then new threads are created
+Example:
+ThreadPoolExecutor executor = new ThreadPoolExecutor(
+    2, 4,
+    10, TimeUnit.SECONDS,
+    new ArrayBlockingQueue<>(2),
+    Executors.defaultThreadFactory(),
+    new ThreadPoolExecutor.AbortPolicy());
+
+for (int i = 0; i < 10; i++) {
+    executor.submit(() -> {
+        // heavy work
+    });
+}
+executor.shutdown();
+
+5.ScheduledThreadPoolExecutor (Scheduling Support)
+A subclass of ThreadPoolExecutor that implements ScheduledExecutorService, 
+adding support for delayed and periodic task execution via schedule(), scheduleAtFixedRate(), and scheduleWithFixedDelay()
+Under the hood:
+Uses a specialized DelayedWorkQueue (a DelayQueue) to manage scheduling.
+A “leader” thread waits for the next ready task and signals others when new tasks are enqueued or deadlines pass 
+Tasks scheduled for the same time are enabled in FIFO order and then executed concurrently if threads are available 
+Important: Only corePoolSize threads are used; maximumPoolSize is effectively ignored because the queue is unbounded 
+Cancelled tasks stay in queue by default—set setRemoveOnCancelPolicy(true) to purge immediately 
+Periodic executions do not overlap: scheduleAtFixedRate and scheduleWithFixedDelay enforce proper sequencing
+When to use:
+Running tasks after a delay or on a schedule (repeated with fixed rate or fixed delay).
+Coordinated scheduling of recurring background operations like metrics, cleanup jobs, heartbeats.
+a) scheduledExecutorService.schedule
+This will executed only once after a fixed delay.
+b)scheduledExecutorService.scheduleAtFixedRate(task, 0, period):
+Guarantees execution starts every period seconds, relative to the initial scheduled start time, regardless of how long the task takes.
+c)scheduleWithFixedDelay(task, 0, delay):
+Ensures a fixed delay between the end of one execution and the start of the next.
+If a task takes t seconds, the next starts at t + delay seconds after its start. 
+So with a 15s delay and a 2s run, the next run happens ~17s after the previous start
+
+-------------------------------------------------------------------------------------------------------------------------------
+Locks(java.util.concurrent.lock)
+1. ReentrantLock
+A flexible alternative to synchronized, implemented via AbstractQueuedSynchronizer (AQS). 
+It supports:
+Reentrancy (same thread can lock() multiple times)
+Interruptible locking (lockInterruptibly)
+Timed attempts (tryLock(timeout, unit))
+Try without waiting (tryLock() returns immediately)
+Optionally fair ordering (new ReentrantLock(true))
+
+How This Works in ReentrantLock?
+Fair (fair = true)
+Threads form a FIFO queue. When the lock is released, the thread that has been waiting the longest gets the lock next.
+Unfair (fair = false) – Default Mode
+When the lock becomes free, a new incoming thread doesn’t check if others are waiting. 
+It immediately tries to grab the lock—even if other threads have waited longer. This is known as barging.
+
+Simple Analogy: Waiting in Line
+Imagine a ticket counter at a busy event:
+In a fair line, people are served strictly in the order they arrived. If someone else gets there earlier, you wait your turn.
+In an unfair line, someone might leap forward if the counter becomes free just as they arrive. 
+That means someone who’s been waiting longer can be skipped. You might jump ahead if the moment's right.
+
+Methods in ReentrantLock:
+lock(): Acquires the lock, blocking if necessary, and increments the hold count.
+lockInterruptibly(): Acquires the lock unless the current thread is interrupted, throwing InterruptedException if interrupted while waiting.
+tryLock(): Attempts to acquire the lock immediately. Returns true if successful, otherwise false—does not block.
+tryLock(long timeout, TimeUnit unit): Tries to acquire the lock, waiting up to the timeout. Returns true if acquired. Throws InterruptedException if interrupted.
+unlock(): Releases the lock, decrementing the hold count; fully releases only when count hits zero
+State-Inspection Methods
+These are often used for debugging or monitoring:
+isLocked(): Returns true if any thread holds the lock.
+isHeldByCurrentThread(): Checks if the current thread holds the lock.
+getHoldCount(): Number of times the current thread has acquired this lock.
+isFair(): Returns whether the lock was created with the fairness policy enable
+
+Condition Support
+newCondition(): Returns a Condition object that can be used with this lock to await and signal. 
+Requires that the current thread holds the lock or throws IllegalMonitorStateException.
+
+2.ReentrantReadWriteLock
+Good for read-heavy workloads: allows multiple readers concurrently, but exclusive write access.
+Read lock permits multiple threads unless a writer holds or is waiting.
+Write lock is exclusive, blocking all readers and writers.
+Read vs Write Lock Behavior
+Multiple Reader threads can acquire the read lock simultaneously, as long as no writer holds the write lock.
+The Producer thread needs exclusive access—no other reader or writer can hold locks during writing.
+
+3.StampedLock
+StampedLock (introduced in Java 8) is a non-reentrant lock providing three locking modes:
+Write lock: exclusive access.
+Read lock: shared (multiple readers allowed).
+Optimistic read: lightweight, non-blocking, but requires validation.
+
+It returns a stamp (a long token) for each lock mode, which is used for unlocking or upgrading/downgrading.
+Stamps are single-use, and the lock is not reentrant—you cannot acquire a new lock using the same thread if it already holds a lock.
+There is also no fairness policy—acquisition ordering is unspecified, and starvation is possible
+What makes it special? The Optimistic Lock:
+Use tryOptimisticRead() to get a stamp (a long) without blocking.
+After reading, call validate(stamp) to check if a write occurred during the read.
+If valid, the read was safe.
+If invalid, fall back to a full read lock and retry 
+This avoids acquiring locks entirely in the common case of read-heavy and low-write contention workloads, 
+cutting overhead and improving throughput
+
+Performance & Use Cases
+In read-heavy environments, StampedLock can significantly outperform both ReentrantReadWriteLock and 
+even synchronized due to its lightweight optimistic reads.
+
+It also supports mode conversion between optimistic, read, and write via methods like tryConvertToWriteLock(stamp) 
+something not available in ReadWriteLock
+
+Synchronizers & Coordination
+1.Semaphore
+What Is a Java Semaphore?
+In Java, java.util.concurrent.Semaphore represents a counting semaphore 
+a synchronization tool that controls how many threads can access a resource concurrently.
+A semaphore has a number of permits.
+acquire() blocks until a permit is available, then takes one (decrements the count).
+release() returns a permit (increments the count) and may unblock a waiting thread.
+Optionally, Java semaphores can be fair (first‑come, first‑served) if enabled.
+
+2.CountDownLatch
+Part of java.util.concurrent, it's a one-shot synchronization aid initialized with a 
+count representing the number of events to wait for.
+Threads call await() to block until the count reaches zero (or a timeout elapses).
+Worker threads call countDown() when they complete their task.
+Once the count hits zero:
+All waiting threads are released.
+Subsequent await() calls return immediately.
+It cannot be reset. If you need cyclic behavior, consider CyclicBarrier or Phaser.
+
+3.Cyclic Barrier
+A synchronization aid in java.util.concurrent that lets a fixed number of threads wait for each other 
+at a common barrier point before proceeding 
+The barrier is cyclic: once tripped (i.e. the awaited count reached), it resets automatically and can be reused for another round 
+You can optionally provide a barrier action (Runnable), which executes exactly once (typically by the last thread that arrives) 
+before releasing all waiting threads 
+If a waiting thread is interrupted or times out, the barrier breaks and all waiting threads receive a BrokenBarrierException
+When to Use CyclicBarrier?
+For multi-phase parallel computation (e.g. stage-based simulation or processing pipelines).
+In scenarios like map-reduce, where threads process parts and then synchronize to combine results.
+When threads must start or proceed together, potentially multiple times.
+When you need an optional barrier task to perform a final step before all threads move on 
+
+4.Phaser
+The java.util.concurrent.Phaser is a flexible synchronization barrier—similar to CountDownLatch or CyclicBarrier, 
+but far more dynamic:
+You can register or deregister participating threads at runtime.
+It supports reusable phases: threads can repeatedly sync at multiple barrier points.
+You can customize behavior via the onAdvance(int phase, int registeredParties) callback, 
+which runs when a phase completes and can also indicate termination of the phaser
+Key Operations
+register() / bulkRegister(n): join the synchronization group.
+arrive(): mark arrival without waiting.
+arriveAndAwaitAdvance(): arrive and block until phase advances.
+arriveAndDeregister(): mark arrival and leave the phaser.
+getPhase(): retrieve current phase number.
+isTerminated(): check if phaser has ended based on onAdvance logic
+Override onAdvance to control termination:
+@Override
+protected boolean onAdvance(int phase, int registeredParties) {
+   return phase >= maxPhases || registeredParties == 0;
+}
