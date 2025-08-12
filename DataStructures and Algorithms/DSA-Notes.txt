@@ -1,0 +1,327 @@
+=>Big O:
+Big O is used to measure if the code is efficent in terms of time and space complexity.
+
+Time Complexity:
+The time complexity of an algorithm quantifies the amount of time taken by an algorithm to run as a 
+function of the length of the input. Note that the time to run is a function of the length of the input 
+and not the actual execution time of the machine on which the algorithm is running on.
+
+Space complexity:
+Problem-solving using computer requires memory to hold temporary data or final result while the program 
+is in execution. The amount of memory required by the algorithm to solve given problem is called space 
+complexity of the algorithm.
+
+Consider we have an array which has 7 elements
+0123456
+here 0 is the best case represented by omega
+here 4 is the average case represented by theta
+here 6 is the worst case represented by O
+Big O is always the worst case technically
+
+O(n):
+Example1:
+public class Main {
+
+    public static void printItems(int n){
+        for (int i=0; i<n; i++){
+            System.out.println(i);
+        }
+    }
+
+    public static void main(String[] args) {
+
+        printItems(10);
+    }
+}
+
+if the n is 10 then the number of operations is 10 it is a linear graph
+So we can say the printItems(int n) method is O(n)
+
+Example2:
+public class Main {
+
+    public static void printItems(int n){
+        for (int i=0; i<n; i++){
+            System.out.println(i);
+        }
+		
+		for (int j=0; j<n; j++){
+            System.out.println(j);
+        }
+    }
+
+    public static void main(String[] args) {
+
+        printItems(10);
+    }
+}
+if the n is 10 then the number of operations is 2*10 
+So we can say the printItems(int n) method is O(2n)
+but we can simplify this by droping constants so we drop 2 so it is O(n)
+
+
+O(n*2):
+Example1:
+public class Main {
+
+    public static void printItems(int n){
+        for (int i=0; i<n; i++){
+            for (int j=0; j<n; j++){
+                System.out.println(i+" "+j);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+
+        printItems(10);
+    }
+}
+if the n is 10 then the number of operations is 100
+So we can say the printItems(int n) method is O(n*2)
+
+=>Drop Non-Dominats:
+Example1:
+public class Main {
+
+    public static void printItems(int n){
+        for (int i=0; i<n; i++){
+            for (int j=0; j<n; j++){
+                System.out.println(i+" "+j);
+            }
+        }
+		
+		for (int k=0; k<n; k++){
+            System.out.println(k);
+        }
+    }
+
+    public static void main(String[] args) {
+
+        printItems(10);
+    }
+}
+if the n is 10 then the number of operations is 110
+So we can say the printItems(int n) method is O(n*2 + n)
+here n*2 is dominant and n is non dominant so we drop n
+so we can say that the above operations can be simplified to O(n*2)
+
+=>0(1)
+Example:
+public class Main {
+
+    public static int printItems(int n){
+        return n + n;
+    }
+
+    public static void main(String[] args) {
+
+        printItems(10);
+    }
+}
+if the n is 10 then the number of operations is 1
+So we can say the printItems(int n) method is O(1)
+
+=>O(log n)
+For example if we an array of elements
+1 2 3 4 5 6 7 8
+
+if we want to find 1
+we can divide the list into 2 halfs and check if 1 is present in which half
+after dividing 1 2 3 4  -> operation 1
+after dividing again 1 2 -> operation 2
+after divding again 1 -> operation 3
+
+So to find a number from a array of 8 elements we need 3 operations
+
+2^3 = 8
+3log2 = log 8
+log8(base2) = 3
+
+so if we have n elements then the number of operations it will take to find a number is log n(base2)
+so the above logic is an example of O(log n) -> this is also called divide and conqure
+
+=>Different terms for inputs
+->O(a+b)
+Example:
+public class Main{
+    public static void printItems(int a,int b) {
+       for (int i=0; i<a; i++){
+           System.out.println(i);
+       }
+
+        for (int j=0; j<b; j++){
+            System.out.println(j);
+        }
+    }
+
+
+    public static void main(String[] args) {
+
+        printItems(10,20);
+    }
+}
+
+->O(a*b)
+Example:
+public class Main{
+    public static void printItems(int a,int b) {
+       for (int i=0; i<a; i++){
+           for (int j=0; j<b; j++){
+            System.out.println(j);
+        }
+       }
+
+    }
+
+    public static void main(String[] args) {
+
+        printItems(10,20);
+    }
+}
+NOTE: Look at the graph of all BigO Complexity here: BigO-Graph.png
+Find more here: https://www.bigocheatsheet.com/
+
+=>Datastructures:
+
+->Single Linked List:
+1.Append: adding a node at the end of the single linked list
+BigO: O(1)
+2.Remove Last: removing a node from the end of the single linked list
+BigO: O(1)
+3.Prepend: adding a node at the beginning of the single linked list
+BigO: O(1)
+4.Remove First: removing a node from the beginning of the single linked list
+BigO: O(1)
+5.Get: used to get a value at a particular index
+BigO: O(n)
+6.Set: used to set a value at a particular index
+BigO: O(n)
+7.insert: used to insert a value at a particular index
+BigO: O(n), Best case: O(1)
+8.remove: used to remove a value at a particular index
+BigO: O(n), Best case: O(1)
+9.reverse: to reverse a single linked list
+BigO: O(n)
+
+->Doubly Linked List:
+1.Append: adding a node at the end of the doubly linked list
+BigO: O(1)
+2.Remove Last: removing a node from the end of the doubly linked list
+BigO: O(1)
+3.Prepend: adding a node at the beginning of the doubly linked list
+BigO: O(1)
+4.Remove First: removing a node from the beginning of the doubly linked list
+BigO: O(1)
+5.Get: used to get a value at a particular index
+BigO: O(n)
+6.Set: used to set a value at a particular index
+BigO: O(n)
+7.insert: used to insert a value at a particular index
+BigO: O(n), Best case: O(1)
+8.remove: used to remove a value at a particular index
+BigO: O(n), Best case: O(1)
+9.reverse: to reverse a single linked list
+BigO: O(n)
+
+->Stack: LIFO internally uses SSL
+1.push: TO Push an element into stack
+Big O: O(1)
+2.pop: To pop an element from stack
+Big O: O(1)
+
+->Queue: FIFO internally uses SSL
+1.enque: TO insert an element into queue
+Big O: O(1)
+2.dequeue: To remove an element from queue
+Big O: O(1)
+
+->Binary Search Tree: 
+Binary Search Tree is a node-based binary tree data structure which has the following properties:
+The left subtree of a node contains only nodes with keys lesser than the node’s key.
+The right subtree of a node contains only nodes with keys greater than the node’s key.
+The left and right subtree each must also be a binary search tree.
+Number of nodes in BST : 2*h -1
+where h is the height of the tree
+1.Insert: to insert a node into BST
+Technical Big O: O(n), Best Case: O(log n),we will treat this Big O as O(log n)
+2.Contains: to check if a node exists in BST
+Technical Big O: O(n), Best Case: O(log n),we will treat this Big O as O(log n)
+3. Remove or delete : to delete a node in BST
+Technical Big O: O(n), Best Case: O(log n),we will treat this Big O as O(log n)
+
+->HashTable:
+It stores data in key value pairs with hashed value of key as the index
+1.hash: It takes the key string as input and retures the hashed value of the key
+Big O: O(1)
+2.set: It takes key and value as input and set it to the hashtable
+Big O: O(1)
+3.set: It takes key as input and get the value from the hashtable
+Big O: O(1)
+
+->Graph:
+A Graph is a non-linear data structure consisting of vertices and edges. 
+The vertices are sometimes also referred to as nodes and the edges are lines or arcs that connect any 
+two nodes in the graph. More formally a Graph is composed of a set of vertices( V ) and a set of edges( E ). 
+The graph is denoted by G(E, V).
+
+Vertices: Vertices are the fundamental units of the graph. Sometimes, vertices are also known as vertex or nodes. 
+Every node/vertex can be labeled or unlabelled.
+Edges: Edges are drawn or used to connect two nodes of the graph. It can be ordered pair of nodes in a directed graph. 
+Edges can connect any two nodes in any possible way. There are no rules. Sometimes, edges are also known as arcs. 
+Every edge can be labeled/unlabelled.
+Space Complexity:
+Using Adjacency Matrix: O(|V*2|)
+Using Adjacency List: O(|V| + |E|)
+
+1.AddVertex
+Using Adjacency Matrix: O(|V*2|)
+Using Adjacency List: O(1)
+2.AddEdge
+Using Adjacency Matrix: O(1)
+Using Adjacency List: O(1)
+3.RemoveEdge
+Using Adjacency Matrix: O(1)
+Using Adjacency List: O(|E|)
+4.RemoveVertex
+Using Adjacency Matrix: O(|V*2|)
+Using Adjacency List: O(|V| + |E|)
+
+Heap:
+A Heap is a special Tree-based data structure in which the tree is a complete binary tree
+Max-Heap: In a Max-Heap the key present at the root node must be greatest among the keys 
+present at all of it’s children. The same property must be recursively true for all sub-trees in that Binary Tree.
+Min-Heap: In a Min-Heap the key present at the root node must be minimum among the keys
+present at all of it’s children. The same property must be recursively true for all sub-trees in that Binary Tree.
+
+1.Insert: O(log n)
+2.Remove: O(log n)
+
+Arrays:
+Two Pointers & Sliding window
+https://leetcode.com/problems/sort-colors/description/
+https://leetcode.com/problems/longest-substring-without-repeating-characters/description/
+Two Sum
+Best Time to Buy/Sell Stock
+Reverse String
+Rotate Array
+Longest Substring Without Repeating Characters
+
+Binary Search
+Find the index of 7 in sorted array [1, 3, 5, 7, 9, 11]  
+Find first occurrence of 4 in [1, 2, 4, 4, 4, 5, 6,...INT_LONG]
+https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/description/
+https://leetcode.com/problems/find-peak-element/description/
+https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/description/
+https://leetcode.com/problems/search-a-2d-matrix/description/
+https://www.geeksforgeeks.org/dsa/find-rotation-count-rotated-sorted-array/
+Find position of an element in an Infinite Sorted Array
+https://leetcode.com/problems/median-of-two-sorted-arrays/
+
+Linked List
+Reverse a Linked List : https://leetcode.com/problems/reverse-linked-list/description/
+Detect Cycle : https://leetcode.com/problems/linked-list-cycle/description/
+Merge Two Sorted Lists : https://leetcode.com/problems/merge-two-sorted-lists/
+Remove Nth Node from End : https://leetcode.com/problems/remove-nth-node-from-end-of-list/description/
+Middle of the Linked List : https://leetcode.com/problems/swap-nodes-in-pairs/description/
+

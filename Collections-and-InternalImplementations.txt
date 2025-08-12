@@ -202,7 +202,113 @@ LinkedHashMap Internal Implementation
 LinkedHashMap<K,V> extends HashMap<K,V> and combines a hash table with a doubly linked list
 allowing it to maintain predictable iteration order—either by insertion or access 
 
+--------------------------------------------------------------------------------------------------------------
+HashSet internal implementation
 
+
+---------------------------------------------------------------------------------------------------------------------
+Concurrent Collections:
+Java provides thread-safe variants in java.util.concurrent:
+1.ConcurrentHashMap (ConcurrentMap):
+Java 7 and Earlier: Segmented Locking
+Internally, the map is divided into segments (default count 16) — each segment is essentially a small 
+HashMap wrapped in a ReentrantLock 
+Writes require acquiring the lock for just the segment covering the key, enabling concurrent updates across different segments.
+Reads are lock-free and allowed to proceed concurrently 
+The concurrency level parameter in constructors is mainly a sizing hint affecting the number of segments
+
+Java 8 and Later: Bucket-Level Locking + CAS + Treeification
+Core Data Structure
+The segmented model is replaced with a single table: volatile Node<K,V>[] table, where each Node is like a linked list entry: 
+(hash, key, volatile V val, next, ...) 
+Buckets hold either linked lists or, once too many collisions occur, are converted into 
+balanced trees (TreeBins) to improve lookup performance from O(n) to O(log n) 
+
+Writes & CAS
+On insert (put), the bucket index is computed with a hash function spread to distribute well.
+If the bucket is empty: a CAS insert initializes it — no locking needed.
+If not empty: synchronization is applied only on that bucket. The first node (or TreeBin) acts like a lock monitor 
+Collisions beyond a threshold trigger treeification to keep performance optima
+
+2.ConcurrentSkipListMap
+A thread-safe implementation of ConcurrentNavigableMap, introduced in Java 1.6, 
+offering sorted key ordering and concurrent access ([turn0search0]turn0search1).
+Ideal for scenarios requiring ordered maps under concurrent read/write workloads.
+Internal Structure: The Skip List Primer
+The map uses a skip list data structure: multiple levels of sorted linked lists where higher levels skip over entries, enabling O(log n) expected time for get, put, remove, and navigation operations ([turn0search8]turn0search6).
+Each node maintains forward pointers at various levels (probabilistically assigned) alongside key and value fields ([turn0search8]).
+
+3.ConcurrentSkipListSet
+A thread-safe, sorted, NavigableSet implementation backed by a ConcurrentSkipListMap.
+It maintains elements in sorted order (natural or via comparator) and supports concurrent access by multiple threads safely.
+Provides expected O(log n) time complexity for contains, add, and remove operations.
+Iterators and spliterators are weakly consistent: they reflect some snapshot in time, may continue as collection changes, 
+and never throw ConcurrentModificationException.
+
+4.BlockingQueue implementations: ArrayBlockingQueue, LinkedBlockingQueue, etc.
+ArrayBlockingQueue
+A bounded, array-based blocking queue implementing FIFO ordering and backed by a fixed-size array specified at construction. Null elements are not allowed. 
+Core synchronization:
+Uses a single ReentrantLock to guard both put (insert) and take (remove) operations.
+Optional fairness mode (passed in constructor) governs whether waiting threads are served FIFO. 
+Fairness reduces starvation but may degrade throughput. 
+Blocking behavior:
+put() blocks when the array is full.
+take() blocks when the queue is empty.
+Threads await on Conditions until queue state changes. 
+Order and performance:
+Strict FIFO.
+Capacity fixed on creation.
+Simplicity yields predictable performance under moderate concurrency.
+
+LinkedBlockingQueue
+A (optionally) bounded, linked‑node FIFO queue, backed by a singly-linked list of Node<E> entries (each with item and next). 
+Thread safety:
+Uses two ReentrantLocks: one for producers (putLock) and one for consumers (takeLock), reducing contention between put and take operations. 
+Two Conditions: notFull (on putLock) and notEmpty (on takeLock) control blocking behavior.
+put(e):
+Locks putLock.
+Waits if queue size equals capacity.
+Enqueues new node at tail, increments count (an AtomicInteger).
+Signals notEmpty if necessary.
+
+5.CopyOnWriteArrayList 
+A thread-safe variant of ArrayList in java.util.concurrent.
+Every mutation (e.g. add, set, remove) creates a fresh copy of the underlying array.
+Optimized for read-heavy workloads where traversals vastly outnumber writes.
+Iterators are snapshot-based, reflecting the state at creation time and immune to concurrent modifications.
+Underlying Array & Thread Safety
+Internally stores elements in a volatile Object[] array.
+Readers (get, iteration) access this volatile array without locks—lock-free reads.
+Writers acquire an internal ReentrantLock, clone the array, apply the mutation, then atomically replace the volatile reference
+Mutation Flow (e.g., add(e)):
+Lock is acquired.
+A new array of length+1 is copied from the current one.
+New element is appended.
+volatile array reference is updated.
+Lock is released.
+
+6.CopyOnWriteArraySet
+A thread-safe Set implementation in java.util.concurrent, backed by a CopyOnWriteArrayList.
+Best suited when the set size remains small, reads vastly outnumber writes, and safe iteration is crucia
+Mutation operations (e.g., add, remove):
+Acquire an internal lock.
+Copy the entire backing array to a new one.
+Apply the change.
+Atomically update the reference.
+Duplicate prevention: add() checks presence before copying. If the element already exists, it returns false without copying
+
+Difference between Collections.synchronizedList and Concurrency Collections
+Collections.synchronizedList(...)
+Wraps a standard list (e.g. ArrayList) in a mutex-synchronized proxy.
+All public methods (add, get, remove, etc.) are wrapped in synchronized(this) blocks, serializing access. Each operation acquires a global lock. 
+Iteration safety is NOT automatic—you must manually synchronize during iteration to avoid undefined behavior or exceptions:
+
+-------------------------------------------------------------------------------------------------------=
+volatile vs Atomic
+volatile Keyword:
+Guarantees
+Visibility: Updates to a volatile variable are immediately visible to other threads. All threads read the latest value.
 ---------------------------------------------------------------------------------------------------------
 Collections Utility Class
 This class is packed with static methods for operating on or creating Collection objects (Lists, Sets, Maps):
@@ -260,3 +366,4 @@ Doesn't support add or remove (throws UnsupportedOperationException)
 equals, deepEquals (multidimensional), hashCode, deepHashCode, compare, mismatch
 7.Representation & streaming:
 toString(), deepToString(), stream(), spliterator()
+-------------------------------------------------------------------------------------------------------

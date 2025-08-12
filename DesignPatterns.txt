@@ -34,3 +34,130 @@ Serialization-safe — Enums preserve singleton identity during serialization/de
 Reflection-resistant — Java prevents reflective instantiation of enums, blocking one common way to break singleton protection 
 Clone-proof — Enum types cannot be cloned (their clone() is implicitly final or unsupported), preventing copy-based duplication 
 Clean & minimal code — Just declare a single enum constant; all lifecycle and safety guarantees are handled by the JVM with no extra boilerplate 
+
+2.Prototype pattern
+The Prototype pattern is a creational design pattern that allows new object creation by cloning an existing "prototype" instance 
+instead of using constructors. This is particularly useful when object construction is expensive or complex.
+
+a).Using Cloneable + clone() (Deep or Shallow Copy)
+Efficient for expensive instantiation (like DB loading).
+Must decide whether to perform deep or shallow copy.
+
+b)Copy Constructor / Custom clone()
+Full control over cloning logic.
+Avoids pitfalls of Java Cloneable.
+
+3.Factory Design Pattern:
+The Factory Design Pattern is a creational pattern that centralizes object creation in one place 
+So clients depend only on abstractions—not concrete classes. It enhances flexibility, decouples code, and makes adding new types easier.
+Defines a common factory interface or abstract class to create products.
+Clients request products via the factory instead of using new.
+Makes it easy to introduce new product types without modifying client logic.
+Intent: Let subclasses decide which concrete product to create.
+Clients interact with a creator class that has an abstract create() method.
+Concrete creators override this to return specific products.
+Advantages:
+Separates creation logic.
+Supports Open/Closed Principle.
+
+Cons:
+Requires many small classes/factories.
+Slight overhead from indirection.
+
+4.Abstract Factory Design Pattern
+Compared to Factory Method, which creates one product per factory, this abstract factory allows multiple product variants (multiple processors per region) grouped together.
+If only a single product mapping (method → processor) is needed, a simpler factory pattern (Factory Method or Switch-based factory) might suffice 
+Abstract Factory adds some structural overhead but scales well when new product families (regions + payment options) are introduced 
+
+5.Builder Design Pattern
+The Builder pattern is a creational design pattern that:
+Separates the construction of a complex object from its representation, allowing flexible object creation.
+Enables the same construction process to produce different configurations of the final object 
+Useful when an object has many optional parts or a complex setup—like e‑commerce orders with products, payment, and shipping details
+
+Structural patterns
+1.Adapter pattern
+The Adapter (or Wrapper) is a structural design pattern that makes incompatible interfaces work together by introducing a mediator: 
+the Adapter. It enables existing classes (the Adaptee) to be reused by clients expecting a different interface (Target) without 
+modifying the original code
+Key participants:
+Target: interface the client expects.
+Adaptee: existing class with an incompatible interface.
+Adapter: implements Target and internally uses Adaptee to adapt calls.
+Client: interacts with Target and uses Adapter behind the scenes
+When to Use Adapter
+IIntegrating third-party or legacy code with a new system.
+WWhen you cannot change existing interfaces but need them to conform to the client interface. 
+Supporting polymorphic behavior without altering external libraries or legacy code
+
+2.Facade pattern
+The Facade design pattern is a structural pattern that provides a simplified interface to a complex subsystem. 
+It acts as a “front door” hiding internal complexity and offering only needed operations to clients.
+Characteristics
+Provides a clean, minimal interface over a group of classes
+Reduces coupling between clients and subsystems
+Improves readability and ease of use
+Clients typically interact only with the Facade
+Use‑Cases & Benefits
+When: you need to simplify interactions with a complex subsystem—e.g. booking services, media frameworks, report generators. 
+Refactoring Guru
+Why:
+Cleaner, simpler API for clients
+Looser coupling and easier maintenance
+Hides internal details and orchestration logic
+Optional—clients can still use low‑level APIs if needed
+Real‑Time Java Example: Travel Booking System
+Imagine building an app like MakeMyTrip or Cleartrip. 
+Users want to book flights, hotels, maybe trains. Under the hood, you have separate subsystems:
+FlightBooking
+HotelBooking
+TrainBooking
+Each subsystem has its own APIs and data flow. The client should not coordinate each one manually. 
+Enter the TravelFacade, which exposes a single book(...) method to handle combinations of bookings
+
+3.Decorator Pattern
+The Decorator pattern is a structural design pattern that enables adding new behaviors to individual objects dynamically at runtime, 
+without modifying their class. It adheres to the Open/Closed Principle — open for extension, closed for modification
+
+Core Concept
+Component interface: defines the operations (like Coffee, Window, or IEmail).
+ConcreteComponent: base implementation of that interface.
+Decorator: an abstract class implementing the same interface and holding a reference to a component.
+ConcreteDecorators: extend the Decorator and add behavior before or after delegating to the wrapped component.
+
+Proxy
+Common in scenarios like lazy loading, access control, or remote service stubs to mask complexity and control usage
+
+Flyweight
+Less frequently used, but essential in memory-constrained environments (e.g. graphical rendering or game development) 
+where sharing object state is critical 
+
+Bridge & Composite
+Used selectively—Bridge is seen in cases where abstraction and implementation change over time, Composite for hierarchical 
+object representations—but less common in everyday codebases
+
+Behavioral patterns:
+1. Observer
+Arguably the most widely used behavioral pattern, Observer (also known as publish-subscribe) is foundational in GUI frameworks, 
+event-driven architectures, MVC/MVVM patterns, and reactive programming — anytime one component updates multiple others dynamically
+Real-Time Example: Chat Application
+A chat system is a classic real-time use case for Observer:
+Subject: the chat room or message thread
+Observers: users subscribed to the chat
+When someone sends a message (Subject.sendMessage()), all subscribed users (ChatObserver) receive and display it immediately 
+This pattern ensures new messages are broadcast to all observers without the sender knowing who they are.
+
+2.The Strategy Pattern defines a family of algorithms, encapsulates each one as a separate class, and makes them interchangeable. 
+It allows the strategy to vary independently from the clients that use it 
+
+3.The Chain of Responsibility (CoR) is a behavioral design pattern that decouples the sender of a request 
+from its potential receivers, giving multiple objects the opportunity to process that request. 
+The request is passed down a chain of handler objects. If one handler can process it, great—otherwise, it 
+forwards the request to the next link in the chain 
+🔗 How It Works (Key Structure)
+Sender submits a request to the first handler in the chain.
+Each Handler decides:
+If it can process the request → handles it.
+Else → forwards it to the next handler (if any).
+The pattern allows handlers to be dynamically composed, reordered, or extended at runtime, promoting low coupling 
+and flexible responsibility management

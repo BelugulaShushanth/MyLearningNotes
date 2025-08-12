@@ -1,0 +1,283 @@
+Spring core
+
+Fundamentals of Spring Core
+1.Dependency Injection (DI) & Inversion of Control (IoC)
+
+a)Inversion of Control (IoC) & Spring IoC Container
+IoC Principle: Shifts responsibility of object creation and lifecycle from your code to the Spring framework, 
+promoting loose coupling and flexible design.
+IoC Containers:
+BeanFactory: Lightweight container, lazy-loading beans on demand—ideal for resource-constrained scenarios.
+ApplicationContext: Extends BeanFactory with advanced features like eager bean loading, event publishing, 
+internationalization, and AOP support.
+Why It Matters: IoC enables declarative wiring of beans through configuration metadata, exemplified by 
+@Component, @Bean, or XML config, letting Spring control object lifecycles.
+
+b)Dependency Injection (DI)
+Concept: A design pattern where dependencies are supplied externally rather than being created internally
+Spring handles this automatically.
+Injection Types:
+Constructor Injection: Dependencies are injected through class constructors—promotes immutability and clearer contract.
+Setter Injection: Uses setter methods—allows optional or modifiable dependencies.
+Field Injection: Uses @Autowired on fields—simple but harder to test and doesn't enforce immutability.
+
+Inversion of Control (IoC) is a broad design principle where the framework or container—not your application code—controls the flow and object creation.
+In other words, “Don’t call us, we’ll call you.” 
+Dependency Injection (DI) is a specific implementation of this principle: instead of a class instantiating its dependencies internally, 
+they are injected into it from an external source (e.g., a framework or container).
+
+Relationship Between IoC and DI
+DI is a subset of IoC. Every DI mechanism is a form of IoC, but not all forms of IoC are DI. 
+For example, event callbacks or service locators also demonstrate IoC but don’t count as DI
+
+How it works?
+controlling the instantiation or location of its dependencies by using direct construction of classes or 
+a mechanism such as the Service Locator pattern.
+What is the Service Locator Pattern?
+The Service Locator is a design pattern where a central registry (the locator) provides instances of services to clients on demand. A class that needs a service asks the locator rather than instantiating dependencies directly, promoting decoupling from concrete implementations.
+Its core components typically include:
+Client: the requesting class
+Service Locator: central registry that returns services
+Cache / Initial Context: locate or instantiate the service, possibly caching results
+Service: the actual implementation being retrieved
+Service Locator in Bean Initialization & Injection (e.g., Spring)
+In frameworks like Spring, the Service Locator pattern is implemented via ServiceLocatorFactoryBean. 
+It enables beans to dynamically resolve other beans at runtime. For example, you might define an interface (ParserFactory) 
+and Spring handles locating the appropriate parser implementation when needed
+
+->BeanFactory, Application Context, ClassPathXMLAplicationContext, AnnotationConfigApplicationContext
+The org.springframework.beans and org.springframework.context packages are the basis for Spring Framework’s IoC container. 
+1. BeanFactory
+The core/basic IoC container in Spring, defined in the org.springframework.beans.factory package.
+Lazy initialization: Beans are instantiated only when requested via getBean() 
+Lightweight: Minimal feature set (no AOP, event publishing, i18n, etc.), making it suitable for memory-constrained 
+or simple applications 
+Configuration must manually handle BeanPostProcessor and BeanFactoryPostProcessor registration
+
+2. ApplicationContext
+A superset of BeanFactory, part of the org.springframework.context package; adds enterprise-ready features 
+Eager initialization: All singleton beans are created at startup by default 
+Supports internationalization (i18n), event publishing, resource loading, AOP integration, and automatic post-processor registration 
+Annotation support is full, whereas BeanFactory supports it only minimally or not at all
+
+3. ClassPathXmlApplicationContext
+A concrete implementation of ApplicationContext.
+Loads bean definitions from XML configuration files on the classpath 
+Commonly used for standalone or non‑web applications.
+Supports features like shutdown hooks (registerShutdownHook()), i18n via MessageSource, and more
+
+4. AnnotationConfigApplicationContext
+Also an implementation of ApplicationContext, introduced in Spring 3.0.
+Configures beans using Java-based configuration (@Configuration, @Bean, @Component, etc.) instead of XML 
+Ideal for modern, annotation-driven, and type-safe configurations.
+Can load multiple @Configuration classes and handles overrides gracefully 
+
+-----------------------------------------------------------------------------------------------------------------------------------
+2.Beans & IoC Container: Creation, configuration, scopes (singleton, prototype), lifecycle, Java-based and annotation-driven 
+configuration, ApplicationContext vs. BeanFactory.
+
+What Is a Bean?
+In Spring, a bean definition acts like a recipe: it describes how to create and configure an object in the IoC (Inversion of Control) 
+container. The container reads these definitions and then instantiates the beans as needed
+Configuration Styles
+a). XML-Based Configuration
+<bean id="myBean" class="com.example.MyService" scope="singleton">
+  <property name="dependency" ref="otherBean"/>
+</bean>
+b)Annotation & Java-Based Configuration
+@Configuration classes define beans through @Bean methods:
+@Configuration
+public class AppConfig {
+   @Bean
+   public MyService myService() { ... }
+}
+Offers better type safety, refactoring support, and IDE assistance over XML.
+
+C)SCOPES
+i)Singleton (default): One shared instance per Spring container — all requests get the same object
+Example:
+@Component
+@Scope("singleton") // Optional — this is default
+public class CounterService {
+    private int count = 0;
+
+    public void increment() { count++; }
+    public int getCount() { return count; }
+}
+
+// In usage:
+CounterService c1 = context.getBean(CounterService.class);
+c1.increment();
+CounterService c2 = context.getBean(CounterService.class);
+System.out.println(c1 == c2); // true - both refer to same instance
+
+ 
+ii)Prototype: A new instance is created on each request — useful for stateful beans 
+Example:
+@Component
+@Scope("prototype")
+public class TreasureMap {
+    public TreasureMap() {
+        System.out.println("🗺️ Treasure Map Created!");
+    }
+}
+
+iii)Request: instance per HTTP request (web context only) 
+Example:
+@Component
+@Scope(WebApplicationContext.SCOPE_REQUEST)
+public class ShipLog { }
+
+iv)Session: instance per HTTP session (web-only) 
+Example:
+@Component
+@Scope(WebApplicationContext.SCOPE_SESSION)
+public class PirateSession { }
+
+v)Application: instance per ServletContext — shared across the web app scope
+Example:
+@Component
+@Scope("application")
+public class GlobalPirateRules { }
+ 
+vi)Websocket: instance per WebSocket session (web-only)
+Example:
+@Component
+@Scope(scopeName = "websocket", proxyMode = ScopedProxyMode.TARGET_CLASS)
+public class WebSocketBean { }
+
+Real-World Use Cases
+From StackOverflow, here’s how these scopes translate in practice:
+Singleton: Great for stateless services, e.g., a centralized database connection or a service class.
+Prototype: Best for stateful objects like form elements, where each use needs a fresh instance.
+
+Prototype vs. Singleton: Injection Gotcha
+Injecting a prototype bean into a singleton doesn't behave as you might expect. 
+Spring resolves dependencies only once during creation, so the singleton gets just one instance of the prototype. 
+To get a fresh prototype at runtime, you'd need method injection or other workaround techniques
+
+Use @Component, @Service, @Repository, or @Controller on classes to enable component scanning with @ComponentScan
+
+“Spring creates a proxy for those objects (prototype/session/request)… during runtime checks against the scope and 
+creates the object accordingly.”
+This means your singleton bean can carry a proxy reference, which dynamically resolves to the correct scoped object at runtime.
+
+--------------------------------------------------------------------------------------------------------------------------------------
+3.Bean Lifecycle Extensions: @PostConstruct / @PreDestroy, custom initialization, BeanPostProcessor, BeanFactoryPostProcessor.
+
+Spring Bean Lifecycle – Step by Step
+Step-1. Metadata Processing
+Spring starts by reading bean definitions from configuration sources (annotations, XML, Java config), creating BeanDefinition objects. 
+
+Step-2. Instantiation
+The container instantiates the bean using its constructor or factory method. 
+
+Step-3. Aware Interfaces (Optional)
+If your bean implements any Aware interfaces (e.g., BeanNameAware, ApplicationContextAware), 
+Spring invokes their setter methods, allowing beans to access context features. 
+
+Step-4. Dependency Injection
+Dependencies are injected into bean properties via setter, constructor, or field injection. 
+
+Step-5. BeanPostProcessor – Before Initialization
+Any registered BeanPostProcessor can apply logic before initialization callbacks. 
+This is helpful for additional checks or proxy wrapping. 
+
+Step-6. Initialization Callbacks
+Spring triggers three possible initialization mechanisms in order:
+Method annotated with @PostConstruct
+afterPropertiesSet() if the bean implements InitializingBean
+Custom init method defined (e.g., via init() or initMethod in @Bean) 
+
+Step-7. BeanPostProcessor – After Initialization
+Additional bean post-processing for operations like AOP proxying occurs now. 
+Step-8. Bean Ready for Use
+The fully-initialized bean is now available for use within your application. 
+Step-9. Destruction Phase
+When the application context shuts down (for singleton beans):
+@PreDestroy methods are called
+destroy() if the bean implements DisposableBean
+Custom destroy methods (destroyMethod in @Bean or XML) 
+Note: For prototype-scoped beans, destruction callbacks are not invoked—cleanup must be handled manually
+
+BeanPostProcessor: before & after initialization
+What it does:
+postProcessBeforeInitialization(bean, beanName): Invoked after dependency injection but before any initialization callbacks 
+like @PostConstruct, afterPropertiesSet(), or custom init-method—letting you modify or wrap the bean early.
+postProcessAfterInitialization(bean, beanName): Called after all initialization callbacks, often used to wrap beans 
+with proxies (e.g. for AOP).
+A proxy is essentially a stand-in or placeholder for another object. It implements the same interface as the real object and 
+controls interactions—acting as an intermediary that can add logic either before or after forwarding calls
+
+Real-world usage:
+Before Initialization: Validate properties or perform preparation.
+After Initialization: Wrap the bean in a proxy (e.g. for logging or transaction management).
+
+Initialization callbacks
+Spring supports three mechanisms for bean initialization callbacks:
+@PostConstruct – Annotation-based callback that's called after dependency injection (preferred in modern apps).
+InitializingBean.afterPropertiesSet() – Spring interface-based callback.
+init-method="..." – XML-specified callback method name.
+
+Real-Time Use Case: Managing Resources in a Database Connection Pool
+Imagine you have a bean that wraps a database connection pool or client, such as to an external message queue or file resource. 
+You need to ensure that connections are properly initialized when the bean is created, and critically, that the resources are 
+cleaned up when your application shuts down.
+
+-------------------------------------------------------------------------------------------------------------------------------------
+4.Auto-wiring & Configuration Styles: Usage of @Component, @Service, @Repository, @Controller, @Autowired, @Qualifier, @Primary, 
+Stereotype Annotations and @Value; plus profiles and SpEL expressions.
+Spring uses stereotype annotations to mark and auto-detect beans based on their layer or purpose. 
+All of these are specialized forms of @Component:
+@Component — a generic stereotype to register any class as a Spring bean during component scanning. 
+@Service — indicates a service-layer class, encapsulating business logic. 
+@Repository — marks a data access or repository class; enables exception translation for data operations. 
+@Controller — a web controller in MVC; handles HTTP requests as part of the presentation layer.
+Using these instead of plain @Component gives Spring semantic context—for tooling, AOP, exception translation, and clearer architecture.
+
+Dependency Injection: @Autowired, @Qualifier, @Primary
+@Autowired
+The core annotation to auto-wire dependencies Spring resolves the injection by type for fields, constructors, or method
+Resolving Conflicts with Multiple Candidates:
+1.@Primary
+Marks a default bean when multiple beans of the same type exist. If no qualifier is specified, Spring injects the primary bean
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+5.Factory Beans & Aware Interfaces: Using FactoryBean for complex bean creation, and lifecycle awareness with Aware interfaces
+1. FactoryBean in Spring
+A FactoryBean<T> is a special type of Spring bean that acts as a factory for creating other objects rather than 
+being directly used as a bean in your application.
+Essential methods to implement:
+T getObject()	Returns the actual object to be used by Spring clients.
+Class<?> getObjectType()	Indicates the type of object being produced.
+boolean isSingleton()	Defines whether the produced object should be a singleton.
+
+When to use FactoryBean:
+For complex object creation logic, conditional setup, or post-processing needs.
+To integrate third-party libraries that don't fit smoothly into normal Spring DI.
+To generate proxies for AOP, transaction management, or feature-flag-driven bean selection.
+
+Use-case examples:
+A custom DataSourceFactoryBean dynamically assembling database connections.
+ProxyFactoryBean for creating AOP-enabled proxies.
+Feature-flagged beans enabled via a FeatureFlagFactoryBean.
+
+2. Aware Interfaces in Spring
+Spring provides several Aware interfaces that enable beans to access container-specific information or services through callback methods. Some common interfaces include:
+
+BeanNameAware – Receives the bean's name defined in the container.
+BeanFactoryAware – Gets access to the BeanFactory that created the bean.
+ResourceLoaderAware, ApplicationContextAware, etc. – Provide access to more advanced functionality like resource 
+loading or context features.
+
+Typical use cases:
+Logging or internal wiring based on bean name (BeanNameAware).
+Legacy integration requiring dynamic lookup of beans (BeanFactoryAware).
+Accessing external resources like files or messages via loader or context awareness.
+
+Invocation order during bean initialization:
+Spring calls these Aware methods in this sequence as part of bean lifecycle processing:
+
+BeanNameAware.setBeanName(...)
+BeanClassLoaderAware.setBeanClassLoader(...)
+BeanFactoryAware.setBeanFactory(...)
