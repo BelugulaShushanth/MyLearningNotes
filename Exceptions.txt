@@ -1,0 +1,178 @@
+Exceptions
+In Java, exceptions are events that disrupt the normal flow of a program due to errors or unexpected 
+conditions whether from external sources (like I/O errors) or programming bug
+
+
+java.lang.Object
+  └─ java.lang.Throwable
+       ├─ java.lang.Error
+       │    ├─ java.lang.VirtualMachineError
+       │    │    ├─ java.lang.OutOfMemoryError
+       │    │    └─ java.lang.StackOverflowError
+       │    ├─ java.lang.LinkageError
+       │    │    ├─ java.lang.ClassCircularityError
+       │    │    └─ java.lang.NoClassDefFoundError
+       │    ├─ java.lang.InternalError
+       │    ├─ java.lang.ABNFError
+       │    ├─ java.lang.AssertionError
+       │    └─ java.lang.ThreadDeath
+       └─ java.lang.Exception
+            ├─ java.lang.RuntimeException
+            │    ├─ java.lang.ArithmeticException
+            │    ├─ java.lang.ArrayIndexOutOfBoundsException
+            │    ├─ java.lang.ArrayStoreException
+            │    ├─ java.lang.ClassCastException
+            │    ├─ java.lang.EnumConstantNotPresentException
+            │    ├─ java.lang.IllegalArgumentException
+            │    ├─ java.lang.IllegalMonitorStateException
+            │    ├─ java.lang.IllegalStateException
+            │    ├─ java.lang.IllegalThreadStateException
+            │    ├─ java.lang.IndexOutOfBoundsException
+            │    │    ├─ java.lang.ArrayIndexOutOfBoundsException
+            │    │    └─ java.lang.StringIndexOutOfBoundsException
+            │    ├─ java.lang.NegativeArraySizeException
+            │    ├─ java.lang.NullPointerException
+            │    ├─ java.lang.NumberFormatException
+            │    ├─ java.lang.SecurityException
+            │    ├─ java.lang.StringIndexOutOfBoundsException
+            │    └─ java.lang.TypeNotPresentException
+            ├─ java.lang.CloneNotSupportedException
+            ├─ java.lang.ClassNotFoundException
+            ├─ java.lang.ExceptionInInitializerError
+            ├─ java.lang.IllegalAccessException
+            ├─ java.lang.InstantiationException
+            ├─ java.lang.InterruptedException
+            ├─ java.lang.NoSuchFieldException
+            ├─ java.lang.NoSuchMethodException
+            └─ java.lang.reflect.ReflectiveOperationException
+
+
+Java categorizes exceptions under the superclass Throwable, which is split into two main branches:
+Errors (Error): Severe, unrecoverable issues (e.g., OutOfMemoryError) that you generally shouldn’t catch.
+Exceptions: Issues a program can often handle—or at least document.
+Within Exceptions, there are two major types: Checked and Unchecked.
+
+Checked vs Unchecked Exceptions
+Checked Exceptions (Compile-time enforced)
+Definition: Subclasses of Exception (excluding RuntimeException) that the compiler forces you to handle or declare using throws.
+Typical Causes: External, recoverable issues—file systems, networks, databases.
+Examples: IOException, SQLException, ClassNotFoundException, InterruptedException
+
+Unchecked Exceptions (Runtime)
+Definition: Subclasses of RuntimeException, unchecked at compile time.
+Typical Causes: Programming errors—null references, invalid index access, logic errors.
+Examples: NullPointerException, ArrayIndexOutOfBoundsException, ArithmeticException, IllegalArgumentException
+
+| Feature              | Checked Exceptions                  | Unchecked Exceptions                               |
+| -------------------- | ----------------------------------- | -------------------------------------------------- |
+| Compiler enforcement | Must catch or declare               | No restriction                                     |
+| Subclass of          | `Exception` (not RuntimeException)  | `RuntimeException`                                 |
+| Typical use case     | External/system errors, recoverable | Bugs, programming mistakes                         |
+| Example exceptions   | `IOException`, `SQLException`       | `NullPointerException`, `IllegalArgumentException` |
+
+
+Use Checked Exceptions when the caller can reasonably recover, such as missing files or network timeouts.
+Use Unchecked Exceptions for programming errors (e.g., invalid arguments) and let them indicate bugs that should be fixed, not caught.
+Avoid catching broad Exception—it can unintentionally mask serious issues.
+Exception Chaining: Wrap underlying exceptions in higher-level ones using constructors that accept a cause. 
+Preserves root cause while abstracting details.
+Document behavior even for runtime exceptions—especially high-level APIs or libraries
+
+Exception handling with inheritance
+Rules for Exception Handling in Overridden Methods
+Unchecked Exceptions:
+A subclass method can throw any unchecked exception (i.e., subclasses of RuntimeException) 
+during overriding, regardless of the superclass method's exception declarations.
+It can also choose not to throw any exceptions at all.
+Checked Exceptions:
+A subclass method can throw:
+The same checked exceptions declared by the superclass method.
+Subtypes of the checked exceptions declared by the superclass method.
+A subclass method cannot throw:
+New checked exceptions that are not declared by the superclass method.
+Checked exceptions that are not subtypes of those declared by the superclass method
+
+Unchecked exceptions: Subclasses have the freedom to throw any unchecked exceptions or none at all.
+Checked exceptions: Subclasses must adhere to the exception types declared by the superclass method, 
+ensuring that the exception hierarchy is maintained
+
+Custom Exceptions:
+Creating Custom Exceptions
+1. Custom Checked Exception
+A checked exception extends Exception and must be either caught or declared in the method signature using the throws keyword.
+class InvalidAgeException extends Exception {
+    public InvalidAgeException(String message) {
+        super(message);
+    }
+}
+public void validateAge(int age) throws InvalidAgeException {
+    if (age < 18) {
+        throw new InvalidAgeException("Age must be 18 or above.");
+    }
+}
+2.Custom Unchecked Exception
+An unchecked exception extends RuntimeException and does not require explicit handling.
+Example:
+class DivideByZeroException extends RuntimeException {
+    public DivideByZeroException(String message) {
+        super(message);
+    }
+}
+public int divide(int numerator, int denominator) {
+    if (denominator == 0) {
+        throw new DivideByZeroException("Denominator cannot be zero.");
+    }
+    return numerator / denominator;
+}
+
+When to Create Custom Checked vs. Unchecked Exceptions
+
+Custom Checked Exceptions:
+Use Case: When the caller can reasonably recover from the exception.
+Example: Handling specific business logic errors, like invalid user input.
+Considerations: Checked exceptions force the caller to handle or declare the exception, promoting explicit error handling
+
+Custom Unchecked Exceptions:
+Use Case: For programming errors that are not expected to be recovered from.
+Example: Violating internal invariants or illegal state transitions.
+Considerations: Unchecked exceptions do not require explicit handling, allowing for cleaner code but 
+placing the responsibility on the developer to ensure correctness
+
+Real time example of Custom Unchecked exception
+E-commerce Inventory Management
+In an e-commerce application, the system needs to manage product inventory efficiently.
+ When a customer attempts to purchase a product, the system checks if the requested quantity is available. 
+ If the quantity exceeds the available stock, a custom unchecked exception can be thrown to indicate this issue.
+public class InsufficientInventoryException extends RuntimeException {
+    public InsufficientInventoryException(String message) {
+        super(message);
+    }
+}
+
+public class InventoryService {
+    private int availableQuantity = 100;
+
+    public void processOrder(int quantity) {
+        if (quantity > availableQuantity) {
+            throw new InsufficientInventoryException("Insufficient inventory. Available quantity: " + availableQuantity);
+        }
+        // Proceed with order processing
+    }
+}
+
+public class EcommerceApp {
+    public static void main(String[] args) {
+        InventoryService inventoryService = new InventoryService();
+        try {
+            inventoryService.processOrder(150); // This will throw InsufficientInventoryException
+        } catch (InsufficientInventoryException e) {
+            System.out.println("Order processing failed: " + e.getMessage());
+        }
+    }
+}
+
+Domain-Specific Error: The exception represents a specific business rule violation—insufficient inventory—which is not a generic Java exception.
+
+Runtime Handling: Since inventory issues are expected and can be handled by the application logic, using a runtime exception allows for more flexible error handling without forcing the caller to catch or declare it.
+
+Cleaner Code: It avoids cluttering the codebase with unnecessary try-catch blocks, especially when the exception is part of normal application flow and can be handled gracefully.

@@ -1,0 +1,156 @@
+Interface vs AbstractClass
+Key Differences Between Interface (with Default Methods) vs Abstract Class
+1. State & Constructors
+Abstract Classes can maintain instance variables (state), constructors, initialization logic, and 
+non‑abstract methods that directly use that state. 
+Interfaces cannot hold state—only constants (public static final)—and have no constructors. 
+
+2. Default Methods in Interfaces
+Introduced in Java 8, default methods allow interfaces to include method implementations to support backward compatibility and 
+convenience without breaking existing code. 
+But default methods are limited—they can invoke only other interface methods, not rely on any implementation-specific state. 
+
+3. Inheritance & Extensibility
+Abstract Classes support single inheritance—only one abstract or concrete superclass. 
+Interfaces, on the other hand, enable multiple inheritance of behavior. A class can implement multiple interfaces. 
+
+4. Use Cases
+Abstract Class: Choose when you have shared state or common implementation among related classes.
+Interface w/ Default Method: Best for cases where you want to define behavior contracts across unrelated types and provide default convenience methods without forcing a class hierarchy.
+
+When to Use What:
+Use an interface with default methods when:
+You want multiple behaviors added to diverse classes.
+You need backward-compatible enhancements.
+You don't need to store or manage object state.
+Use an abstract class when:
+You need to capture and share state or common implementation code.
+You want to enforce shared logic through constructors or non-abstract methods.
+
+| Criterion              | Interface w/ Default Methods               | Abstract Class                                |
+| ---------------------- | ------------------------------------------ | --------------------------------------------- |
+| Holds State            | No                                         | Yes                                           |
+| Constructors           | No                                         | Yes                                           |
+| Multiple Inheritance   | Yes (can implement many)                   | No (only single class inheritance)            |
+| Default Implementation | Yes (limited)                              | Yes (full control)                            |
+| Best Used For          | Behavior contracts + convenience utilities | Shared behavior + state among related classes |
+
+Example
+// Interface defining a capability
+public interface Connectable {
+    void connect();
+    void disconnect();
+
+    default boolean isConnected() {
+        // Provides a default implementation for convenience
+        connect(); 
+        // Suppose we check some status
+        return true;
+    }
+}
+What it does:
+connect() and disconnect() are abstract methods that every implementing class must define.
+isConnected() is a default method: it includes a simple behavior that all implementing classes can use without having to override. 
+This is ideal when you want to add functionality to a broad range of classes, but still give them the option to override it later 
+(common for utility or backward-compatibility purposes
+public class SmartLight implements Connectable {
+    @Override
+    public void connect() {
+        System.out.println("SmartLight connected.");
+    }
+    @Override
+    public void disconnect() {
+        System.out.println("SmartLight disconnected.");
+    }
+}
+Even without overriding isConnected(), SmartLight can use it straight away:
+Connectable light = new SmartLight();
+light.connect();             // SmartLight connected.
+light.isConnected();         // Uses default: connect(); then true
+This keeps things simple and flexible — many unrelated devices can implement Connectable and benefit from shared behavior.
+
+Abstract Class for Shared State and Behavior
+Now imagine multiple devices share certain concrete behaviors and internal state. For example, 
+all appliances have a power state and you want to enforce certain behaviors and reuse code:
+public abstract class Appliance {
+    protected boolean powerOn = false;
+
+    public void powerOn() {
+        powerOn = true;
+        System.out.println("Powered on");
+    }
+
+    public void powerOff() {
+        powerOn = false;
+        System.out.println("Powered off");
+    }
+
+    public abstract void operate();   // Every appliance must define how it operates.
+}
+public class AirConditioner extends Appliance {
+    @Override
+    public void operate() {
+        if (powerOn) {
+            System.out.println("Cooling the room...");
+        } else {
+            System.out.println("Turn it on first!");
+        }
+    }
+}
+AirConditioner ac = new AirConditioner();
+ac.powerOn();    // Powered on
+ac.operate();    // Cooling the room...
+Here, Appliance provides state (powerOn) and common behavior, while enforcing that every subclass must define how operate() works.
+This perfectly matches the pattern for when to use an abstract class: when you need a shared foundation, 
+including both implemented methods and abstract ones
+| Scenario                            | Use Case                                 | Why It Makes Sense                         |
+| ----------------------------------- | ---------------------------------------- | ------------------------------------------ |
+| `Connectable` (interface + default) | Multiple device types share connectivity | Lightweight, flexible, and easily extended |
+| `Appliance` (abstract class)        | Devices share power logic and status     | Encapsulates shared state and behavior     |
+
+Final Recap
+
+Interface with default method: great for defining a capability that many diverse classes can implement easily 
+(like Connectable for various smart devices).
+Abstract class: best when you need to share common state and functionality across a family of related classes 
+(like Appliance for home devices that use power logic).
+
+
+
+Core OOP Principles in Java
+Java's object-oriented design is built on four fundamental concepts that make code more modular, maintainable, and reusable: 
+Abstraction, Encapsulation, Inheritance, and Polymorphism. These are often known as the four pillars of OOP.
+1. Abstraction
+Abstraction simplifies complexity by exposing only the necessary details and hiding the inner workings. 
+Think about driving a car—you only need to interact with the steering wheel and pedals, not the engine mechanics
+In Java, abstraction is achieved using abstract classes or interfaces. For example:
+2. Encapsulation
+Encapsulation is about bundling data with its related methods and restricting direct access from outside. 
+It’s like a capsule that protects medicine from external exposure.
+3.Inheritance
+Inheritance allows one class to inherit properties and behaviors from another, fostering code reuse. It follows the "is-a" relationship.
+4. Polymorphism
+Polymorphism allows a method or object to take multiple forms—enhancing flexibility and scalability in code
+Compile-time polymorphism (Method Overloading):
+class Math {
+    int add(int a, int b) { return a + b; }
+    double add(double a, double b) { return a + b; }
+}
+Runtime polymorphism (Method Overriding):
+class Parent {
+    void show() { System.out.println("Parent show"); }
+}
+class Child extends Parent {
+    @Override
+    void show() { System.out.println("Child show"); }
+}
+
+Parent obj = new Child();
+obj.show();  // Outputs: Child show
+
+Real-World Analogies
+
+Abstraction: Driving a car—you use controls, not its inner mechanics.
+Encapsulation: A pill capsule hides its ingredients.
+Inheritance: A puppy inherits traits from its parent breed.
+Polymorphism: A TV remote—same buttons work across different devices.

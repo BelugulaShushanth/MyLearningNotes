@@ -331,6 +331,7 @@ Important methods of Java Runtime class
 6)	public long freeMemory()	returns amount of free memory in JVM.
 7)	public long totalMemory()	returns amount of total memory in JVM.
 
+----------------------------------------------------------------------------------------------------------------------------------------------
 Concurrency deep dive:
 java.util.concurrent
 
@@ -576,6 +577,7 @@ even synchronized due to its lightweight optimistic reads.
 It also supports mode conversion between optimistic, read, and write via methods like tryConvertToWriteLock(stamp) 
 something not available in ReadWriteLock
 
+------------------------------------------------------------------------------------------------------------------------------------------------
 Synchronizers & Coordination
 1.Semaphore
 What Is a Java Semaphore?

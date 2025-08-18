@@ -784,5 +784,96 @@ toMap(Person::getName, identity()) carefully—duplicate keys cause exceptions u
 | `mapping(...)`, `filtering(...)` | Transform or filter elements in grouping (Java 9+) |
 | `flatMapping(...)`               | Flatten nested streams when grouping               |
 | `Collector.of(...)`              | Define custom collector with full control          |
-| `teeing(...)` (Java 12+)         | Combine two downstream collectors in one pass      |
+| `teeing(...)` (Java 12+)         | Combine two downstream collectors in one pass       |
 
+-----------------------------------------------------------------------------------------------------------------------------
+Optional class in java 8
+Optional<T> (introduced in Java 8) is a container that may—or may not—hold a non-null value. 
+It helps avoid NullPointerExceptions and reduces boilerplate null checks, making your code cleaner and more expressive.
+
+1.Creation Methods (Factory Methods)
+Optional.of(T value)
+Creates an Optional containing a non-null value. Throws NullPointerException if the value is null. 
+
+Optional.ofNullable(T value)
+Allows null values; returns an empty Optional if the value is null. 
+
+Optional.empty()
+Returns an empty Optional
+
+2.Presence Detection
+isPresent()
+Returns true if a value is present; otherwise false. 
+
+isEmpty() (Java 11+)
+Returns true if no value is present.
+
+3.Value Retrieval & Defaults
+get()
+Returns the contained value, or throws NoSuchElementException if empty. 
+
+orElse(T other)
+Returns the value if present; otherwise returns the other. 
+
+orElseGet(Supplier<? extends T> supplier)
+Returns the value if present; otherwise invokes the supplier to compute a value lazily.
+ 
+orElseThrow(Supplier<? extends X> exceptionSupplier)
+Returns the value if present; otherwise throws an exception provided by the supplier
+
+4.Functional Transformations
+ifPresent(Consumer<? super T> action)
+Executes action if a value is present
+
+map(Function<? super T, ? extends U> mapper)
+Applies mapper to the value if present and returns an Optional of the result (could be null). 
+
+flatMap(Function<? super T, Optional<U>> mapper)
+Similar to map, but expects the mapper to return an Optional, flattening nested Optionals. 
+
+filter(Predicate<? super T> predicate)
+Returns the Optional if the value matches the predicate; otherwise, returns empty.
+----------------------------------------------------------------------------------------------------------------------------
+Interview question.
+what is the real world use case of functional interface
+Example 1: Currency Conversion – MoneyExchanger
+Say you’re building a finance or currency-exchange app. Instead of using a generic Function<Money, Optional<Money>>, 
+you can create a self-explanatory, domain-specific interface:
+@FunctionalInterface
+public interface MoneyExchanger {
+    Optional<Money> exchange(Money money);
+}
+MoneyExchanger idrToEur = money ->
+    Optional.ofNullable(money)
+            .filter(m -> m.getCurrency() == Currency.IDR)
+            .map(m -> new Money(Currency.EUR, 
+                m.getAmount().divide(BigDecimal.valueOf(17_000))));
+This makes the logic clear—you're “exchanging money.” Naming it MoneyExchanger improves intent and readability 
+over a generic Function type-
+Example 2: Retry Mechanism – RetryOperation
+Imagine you need retry logic for network calls or database transactions. A custom interface could look like:
+@FunctionalInterface
+interface RetryOperation<T> {
+    T execute() throws Exception;
+}
+RetryOperation<String> retryableOp = () -> {
+    int attempts = 0;
+    while (attempts < 3) {
+        try {
+            attempts++;
+            // Simulate operation
+            if (Math.random() > 0.7) return "Success";
+        } catch (Exception e) {
+            if (attempts == 3) throw e;
+        }
+    }
+    return "Failed after retries";
+};
+This cleanly captures the intent—an operation with retry logic—not easily expressed with built-in interfaces.
+Why Custom Interfaces Matter
+Domain Clarity: Calling MoneyExchanger.exchange() or RetryOperation.execute() 
+immediately signals intent in a way Function.apply() or Supplier.get() never could.
+Flexibility for Defaults: You can later add domain-relevant default methods (like chained operations) 
+without breaking the single-method contract.
+Future Enhancements: If you need to introduce logging, metrics, error handling, or composition, custom 
+interfaces give a focused extension point that built-ins lack.

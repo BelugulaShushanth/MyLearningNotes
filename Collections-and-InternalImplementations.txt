@@ -202,9 +202,239 @@ LinkedHashMap Internal Implementation
 LinkedHashMap<K,V> extends HashMap<K,V> and combines a hash table with a doubly linked list
 allowing it to maintain predictable iteration order—either by insertion or access 
 
+Entry Class: Internally, LinkedHashMap.Entry extends HashMap.Node (or Entry), 
+adding two additional fields: before and after, used to link entries in insertion or access order. 
+Doubly-Linked List Anchoring: A circular sentinel node (header) is used to refer to the first and last entries. 
+Insertion calls link new entries into the list, updating neighbors accordingly.
+
+Summary Flow
+put() → calls HashMap.putVal()
+HashMap.putVal() → invokes newNode(...) → creates entry and appends to linked list (linkNodeAtEnd(...))
+On access with access-order = true → invokes afterNodeAccess(...) to reorder entry
+Upon insertion, afterNodeInsertion(...) may trigger eviction of the eldest entry
+
+--------------------------------------------------------------------------------------------------------------
+TreeMap internal implementation
+Internal Backbone: Red‑Black Tree (Self‑Balancing BST)
+
+TreeMap doesn't use hashing or buckets. 
+Instead, it stores entries in a Red-Black Tree, a self-balancing binary search tree (BST), 
+which ensures O(log n) operations for get, put, remove, and containsKey.
+
+Each node is an instance of the internal static class Entry<K,V>, which carries:
+K key, V value
+Entry<K,V> left, right, parent
+boolean color, defining RED or BLACK status
+
+Tree Characteristics & Red-Black Properties
+A Red-Black Tree maintains balance via these rules:
+Every node is either RED or BLACK.
+The root is always BLACK.
+A RED node cannot have RED children.
+Every path from the root to a leaf (NULL) has the same number of BLACK nodes.
+All leaves (represented as NIL) are BLACK.
+
+| Feature                    | Description                                                                    |                                             |
+| -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------- |
+| **Base Structure**         | Based on a Red-Black Tree (self-balancing BST)                                 |                                             |
+| **Node Representation**    | `Entry<K,V>` with pointers `left`, `right`, `parent`, plus `color` (RED/BLACK) |                                             |
+| **Balancing After Insert** | `fixAfterInsertion()` handles rotations and color balancing                    |                                             |
+| **Balancing After Delete** | `fixAfterDeletion()` restores tree invariants                                  |                                             |
+| **Performance Guarantees** | `O(log n)` for insertion, deletion, lookup—even in worst-case scenarios        |                                             |
+| **Sorting Behavior**       | Automatically sorted by natural order or provided `Comparator`                 |                                             |
+| **Fail-fast Behavior**     | Iterators throw `ConcurrentModificationException` on concurrent modifications  | ([GeeksforGeeks][1], [dineshonjava.com][2]) |
+
+Example:
+1.TreeMap with default ascending order
+TreeMap<Integer, String> map = new TreeMap<>();
+// Uses natural (ascending) order of keys
+map.put(1, "One");
+map.put(3, "Three");
+map.put(2, "Two");
+System.out.println(map);
+// Output: {1=One, 2=Two, 3=Three}
+
+2.TreeMap with descending order
+TreeMap<Integer, String> reverseMap =
+    new TreeMap<>(Collections.reverseOrder());
+reverseMap.put(1, "One");
+reverseMap.put(3, "Three");
+reverseMap.put(2, "Two");
+System.out.println(reverseMap);
+// Output: {3=Three, 2=Two, 1=One}
+
 --------------------------------------------------------------------------------------------------------------
 HashSet internal implementation
+Backed by HashMap
+Every HashSet internally uses a HashMap to manage its elements. When you add an element to the HashSet, 
+it becomes a key in the backing HashMap, with a constant dummy value as its associated value. 
+This avoids duplicating complex hash table logic, allowing HashSet to leverage HashMap's efficient implementation.
 
+Internal Structure
+private transient HashMap<E, Object> map;
+private static final Object PRESENT = new Object();
+The map holds elements as keys, and PRESENT is a dummy value for every key
+add(Object e)
+public boolean add(E e) {
+  return map.put(e, PRESENT) == null;
+}
+Returns true if the element was not already present
+remove(Object o)
+public boolean remove(Object o) {
+  return map.remove(o) == PRESENT;
+}
+Removes the element and returns true if it existed.
+contains(Object o)
+Just checks if the key exists in the map: map.containsKey(o). 
+iterator()
+Iterates over map.keySet(), returning all elements stored in the set
+
+| Concept            | Description                                                       |
+| ------------------ | ----------------------------------------------------------------- |
+| Backing            | Uses `HashMap` internally with dummy `PRESENT` value for each key |
+| `add()`            | Calls `map.put(key, PRESENT)`, returns true if newly added        |
+| `remove()`         | Uses `map.remove(object)`, checks if value was `PRESENT`          |
+| `contains()`       | Delegates to `map.containsKey(object)`                            |
+| Iteration          | Iterates elements through `map.keySet()`                          |
+| Collision Handling | Linked list (≤ Java 7), Tree structure threshold (≥ Java 8)       |
+| Resizing Policy    | Resizes based on load factor; rehashes entries accordingly        |
+
+--------------------------------------------------------------------------------------------------------------------------
+Linked HashSet Internal Implementation
+Internal Structure of LinkedHashSet
+1. Backed by LinkedHashMap
+Internally, LinkedHashSet doesn't store elements directly. Instead, it leverages a LinkedHashMap to hold its entries. 
+Each element is stored as a key in the LinkedHashMap, with a constant dummy value (PRESENT) for every key.
+This design allows LinkedHashSet to benefit from the efficient hash-based operations of HashMap, 
+while also maintaining predictable ordering through the linked list feature of LinkedHashMap.
+
+In Summary
+LinkedHashSet internally uses a LinkedHashMap to store elements.
+It inherits behavior from HashSet, but adds a doubly-linked list to maintain predictable insertion order.
+Offers O(1) operations with reliable iteration order and moderate overhead.
+Constructors initialize the backing LinkedHashMap, linking elements while preserving order.
+
+---------------------------------------------------------------------------------------------------------------------
+TreeSet Internal Implementation
+Backed by TreeMap
+A TreeSet doesn’t store its elements directly. Instead, it wraps a TreeMap, 
+storing each element as a key with a constant dummy object as its value. Internally, this is captured by:
+
+private transient NavigableMap<E,Object> m;
+TreeSet() { this.m = new TreeMap<>(); }
+
+---------------------------------------------------------------------------------------------------------------------
+Queue:
+	->Deque
+the following are the primary non-concurrent implementations of the Queue interface:
+LinkedList
+ArrayDeque
+PriorityQueue
+
+The ArrayDeque class in Java is a resizable-array implementation of the Deque interface
+ArrayDeque (short for "Array Double-Ended Queue") is a class in Java that implements the Deque interface using a resizable array. 
+It allows elements to be added or removed from both ends efficiently, making it a versatile choice for various data structure needs
+
+Internal Structure
+
+Internally, ArrayDeque uses a circular array to store elements. This design allows for efficient operations at both ends of the deque. The array is dynamically resized as needed to accommodate more elements.
+
+Key aspects of its internal structure include:
+Resizable Array: The internal array grows automatically as elements are added. 
+The default initial capacity is 16, and it doubles in size when the array is full.
+Head and Tail Pointers: Two pointers, head and tail, track the front and rear of the deque, respectively. 
+These pointers are updated during insertion and removal operations.
+Circular Indexing: The array is treated as circular, meaning that when the head or tail pointer reaches the end of the array, 
+it wraps around to the beginning. This allows for efficient use of space.
+
+Key Features
+Resizable Array: Internally, ArrayDeque uses a circular array that automatically grows as needed, typically doubling in size when full. 
+No Capacity Restrictions: It has no fixed capacity limit; it will grow automatically as more elements are added. 
+No Null Elements: Unlike some other collections, ArrayDeque does not allow null elements.
+Not Thread-Safe: ArrayDeque is not synchronized, so it's not thread-safe. External synchronization is required if multiple threads access it concurrently.
+Efficient Operations: It provides constant-time performance (O(1)) for adding, removing, and accessing elements at both ends
+
+Common Use Cases
+Implementing Stacks: By using push() and pop(), ArrayDeque can function as a stack, providing LIFO behavior.
+Implementing Queues: Using offer() and poll(), it can serve as a queue, offering FIFO behavior.
+Implementing Stacks: By using addFirst() and removeFirst(), ArrayDeque can function as a stack, providing Last-In-First-Out (LIFO) behavior.
+Implementing Queues: Using addLast() and removeFirst(), it can serve as a queue, offering First-In-First-Out (FIFO) behavior.
+Undo/Redo Functionality: Ideal for managing undo and redo operations in applications.
+Tree Traversal: Useful for implementing breadth-first search (BFS) and depth-first search (DFS) algorithms.
+Buffering Mechanisms: Suitable for buffering data in parsers or data streams
+
+Example:
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+public class ArrayDequeExample {
+    public static void main(String[] args) {
+        // Using ArrayDeque as a Stack
+        Deque<String> stack = new ArrayDeque<>();
+        stack.push("First");
+        stack.push("Second");
+        System.out.println("Stack pop: " + stack.pop()); // Outputs: Second
+
+        // Using ArrayDeque as a Queue
+        Deque<String> queue = new ArrayDeque<>();
+        queue.offer("Task1");
+        queue.offer("Task2");
+        System.out.println("Queue poll: " + queue.poll()); // Outputs: Task1
+    }
+}
+
+
+Advantages Over Alternatives
+Performance: ArrayDeque is faster than LinkedList for adding and removing elements at both ends. 
+Memory Efficiency: It uses less memory compared to LinkedList because it doesn't require storing pointers for each element.
+Versatility: It can be used as both a stack and a queue, providing flexibility in various scenarios.
+
+--------------------------------------------------------------------------------------------------------------------
+PriorityQueue
+In Java, the PriorityQueue class is a part of the Java Collections Framework and provides an implementation of a priority queue. 
+It orders elements based on their natural ordering or by a comparator provided at queue construction time.
+
+Internal Implementation
+Internally, PriorityQueue uses a binary heap data structure, specifically a min-heap by default. 
+In a min-heap, the smallest element is at the root, ensuring that retrieval operations like peek() or poll() 
+can access the least element in constant time. This structure allows for efficient insertion and removal operations, both of 
+which have a time complexity of O(log n).
+
+Constructors
+PriorityQueue offers several constructors to accommodate different use cases:
+PriorityQueue(): Creates a priority queue with the default initial capacity (11) that orders its elements according to their 
+natural ordering.
+PriorityQueue(int initialCapacity): Creates a priority queue with the specified initial capacity that orders its elements 
+according to their natural ordering.
+PriorityQueue(int initialCapacity, Comparator<? super E> comparator): Creates a priority queue with the specified initial 
+capacity that orders its elements according to the specified comparator.
+PriorityQueue(Collection<? extends E> c): Creates a priority queue containing the elements in the specified collection.
+PriorityQueue(PriorityQueue<? extends E> c): Creates a priority queue containing the elements in the specified priority queue.
+PriorityQueue(SortedSet<? extends E> c): Creates a priority queue containing the elements in the specified sorted set
+
+| Method               | Description                                                        |                                                                        |
+| -------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `add(E e)`           | Inserts the specified element into the priority queue.             |                                                                        |
+| `offer(E e)`         | Inserts the specified element into the priority queue.             |                                                                        |
+| `peek()`             | Retrieves, but does not remove, the head of the queue.             |                                                                        |
+| `poll()`             | Retrieves and removes the head of the queue.                       |                                                                        |
+| `remove(Object o)`   | Removes a single instance of the specified element from the queue. |                                                                        |
+| `contains(Object o)` | Returns `true` if the queue contains the specified element.        |                                                                        |
+| `size()`             | Returns the number of elements in the queue.                       |                                                                        |
+| `clear()`            | Removes all elements from the queue.                               | ([Wikipedia][1], [Oracle Documentation][2], [Oracle Documentation][3]) |
+
+Important Notes
+Null Elements: PriorityQueue does not permit null elements. Attempting to insert a null element will result in a NullPointerException.
+Thread Safety: This implementation is not synchronized. Multiple threads should not access a PriorityQueue instance concurrently if 
+any of the threads modifies the queue. Instead, use the thread-safe PriorityBlockingQueue class. 
+Ordering: If elements are not comparable, a ClassCastException will be thrown when attempting to insert them into the queue.
+
+Use Cases
+PriorityQueue is particularly useful in scenarios where you need to process elements based on priority, such as:
+Task Scheduling: Managing tasks where each task has a different priority level.
+Dijkstra's Shortest Path Algorithm: Efficiently selecting the next node to process.
+Huffman Encoding: Building an optimal prefix code for data compression.
+Event Simulation: Handling events in a simulation where events occur at different times.
 
 ---------------------------------------------------------------------------------------------------------------------
 Concurrent Collections:
@@ -212,7 +442,7 @@ Java provides thread-safe variants in java.util.concurrent:
 1.ConcurrentHashMap (ConcurrentMap):
 Java 7 and Earlier: Segmented Locking
 Internally, the map is divided into segments (default count 16) — each segment is essentially a small 
-HashMap wrapped in a ReentrantLock 
+Hash table wrapped in a ReentrantLock 
 Writes require acquiring the lock for just the segment covering the key, enabling concurrent updates across different segments.
 Reads are lock-free and allowed to proceed concurrently 
 The concurrency level parameter in constructors is mainly a sizing hint affecting the number of segments
@@ -228,8 +458,17 @@ Writes & CAS
 On insert (put), the bucket index is computed with a hash function spread to distribute well.
 If the bucket is empty: a CAS insert initializes it — no locking needed.
 If not empty: synchronization is applied only on that bucket. The first node (or TreeBin) acts like a lock monitor 
-Collisions beyond a threshold trigger treeification to keep performance optima
+Collisions beyond a threshold trigger treeification to keep performance optimal
 
+| Aspect                     | Java 7 and Earlier                        | Java 8 and Later                                                             |
+| -------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| **Locking Strategy**       | Segment-level locks with `ReentrantLock`s | Per-bucket `synchronized` + CAS for initial nodes                            |
+| **Concurrency Level**      | Limited (by number of segments)           | Scales with bucket-level granularity                                         |
+| **Bucket Structure**       | Linked-list only                          | Linked-list; converts to Tree (`TreeBin`) if large                           |
+| **Resizing Behavior**      | Blocking, single-threaded                 | Concurrent, cooperative across threads                                       |
+| **Memory & Compatibility** | Uses legacy segments, heavier overhead    | Leaner design, segments remain only for serialization  ([Stack Overflow][1]) |
+
+--------------------------------------------------------------------------------------------------------------------------
 2.ConcurrentSkipListMap
 A thread-safe implementation of ConcurrentNavigableMap, introduced in Java 1.6, 
 offering sorted key ordering and concurrent access ([turn0search0]turn0search1).

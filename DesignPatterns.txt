@@ -75,6 +75,7 @@ Separates the construction of a complex object from its representation, allowing
 Enables the same construction process to produce different configurations of the final object 
 Useful when an object has many optional parts or a complex setup—like e‑commerce orders with products, payment, and shipping details
 
+-----------------------------------------------------------------------------------------------------------------------------------------------------
 Structural patterns
 1.Adapter pattern
 The Adapter (or Wrapper) is a structural design pattern that makes incompatible interfaces work together by introducing a mediator: 
@@ -136,6 +137,7 @@ Bridge & Composite
 Used selectively—Bridge is seen in cases where abstraction and implementation change over time, Composite for hierarchical 
 object representations—but less common in everyday codebases
 
+----------------------------------------------------------------------------------------------------------------------------------------------------
 Behavioral patterns:
 1. Observer
 Arguably the most widely used behavioral pattern, Observer (also known as publish-subscribe) is foundational in GUI frameworks, 

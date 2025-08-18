@@ -19,6 +19,201 @@ Extension Class Loader: Loads classes from the extension directories specified b
 System/Application Class Loader: Loads classes from the application's classpath, 
 typically defined by the CLASSPATH environment variable.
 
+Delegation Model
+When a class is requested:
+Ask Bootstrap ClassLoader if it can load it.
+If not, delegate to Platform ClassLoader.
+If still not found, the System ClassLoader tries.
+Only then does a custom loader get invoked if used. 
+This ensures consistency (one class definition), security (prevent overriding system classes), and predictability
+
+1. What Is loadClass()?
+Purpose: It's the main entry point for class loading. The JVM calls loadClass() to resolve class references.
+Process (Delegation Model):
+Checks if the class is already loaded via findLoadedClass().
+Delegates to the parent class loader if not found.
+Finally, calls findClass() if still not found.
+If the resolve flag is true, it then calls resolveClass() to link the class.
+Recommendation: Subclasses should not override this method—stick with findClass() for custom logic.
+
+2. What Is findClass()?
+Purpose: Provides the actual mechanism to locate and define a class—typically from a custom source (
+e.g., file system, network, encrypted storage).
+Usage: Invoked only after loadClass() fails to find a class via delegation.
+Custom Implementation: Subclasses are expected to override this. They typically:
+Read class bytes,
+Optionally define package metadata,
+Use defineClass() to turn bytes into a Class<?> instance.
+Default Behavior: Throws ClassNotFoundException if not overridden.
+
+| Method        | Role                              | Who Calls It                         | Typical Behavior                                                                             |
+| ------------- | --------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `loadClass()` | High-level entry point            | JVM or user code                     | Checks loaded cache, delegates to parent loader, then delegates to `findClass()`             |
+| `findClass()` | Custom class locating and loading | Normally overridden by custom loader | Reads bytes (e.g. from custom source), defines class, returns `Class<?>` or throws exception |
+
+
+Why Use a Custom Class Loader?
+You might implement a custom ClassLoader to:
+Load classes from non-standard places: e.g., network, encrypted storage, databases.
+Enable hot deployment/reloading (e.g., during development or in app servers).
+Provide namespace isolation (load multiple versions of classes with the same name, without conflicts).
+Support bytecode transformation, such as instrumentation, profiling, mocking, or AOP
+
+How to Write a Custom Class Loader
+Recommended Approach: Override findClass()
+
+You should typically override findClass() rather than loadClass():
+loadClass() adheres to the delegation model and handles checks for already-loaded classes.
+By overriding findClass(), you provide custom loading logic just when the parent loader can't find it. 
+
+public class DirectoryClassLoader extends ClassLoader {
+    private final Path directory;
+    public DirectoryClassLoader(Path directory, ClassLoader parent) {
+        super(parent);
+        this.directory = directory;
+    }
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        try {
+            Path classFile = directory.resolve(name.replace('.', '/') + ".class");
+            if (Files.exists(classFile)) {
+                byte[] bytes = Files.readAllBytes(classFile);
+                return defineClass(name, bytes, 0, bytes.length);
+            }
+        } catch (IOException e) {
+            throw new ClassNotFoundException("Failed to load", e);
+        }
+        throw new ClassNotFoundException(name);
+    }
+}
+
+DirectoryClassLoader loader = new DirectoryClassLoader(
+    Paths.get("/custom/classes"), MyApp.class.getClassLoader());
+Class<?> cls = loader.loadClass("com.example.MyClass");
+Object obj = cls.getDeclaredConstructor().newInstance();
+
+MyApp.class.getClassLoader() ?
+If MyApp is part of your application code (i.e., on the classpath or module path), 
+the method returns an instance like sun.misc.Launcher$AppClassLoader—the System/Application ClassLoader 
+If MyApp belongs to a core Java package (like java.lang), it was loaded by the Bootstrap ClassLoader, 
+which isn’t a Java object. In that case, getClassLoader() returns null
+
+Reference Types
+Java’s four reference types strong, soft, weak, and phantom
+1. Strong References — The Default Choice
+The standard references you use every day, e.g.:
+MyClass obj = new MyClass();
+Garbage Collection Behavior: Objects referenced strongly are never eligible for GC as long as the reference exists. 
+Only if you set the reference to null or it goes out of scope can the object be collected. 
+When to Use: Use strong references for normal object usage—this is the default and safest behavior that 
+ensures objects remain in memory when needed.
+
+2. Soft References — Flexible Caching
+Definition: Wrap objects in a SoftReference to hint that they can be reclaimed when memory is tight.
+SoftReference<MyObject> softRef = new SoftReference<>(new MyObject());
+Garbage Collection Behavior: Softly referenced objects stay in memory until the JVM determines it's running low on memory. 
+They’re cleared before an OutOfMemoryError is thrown. 
+Use Cases:
+Memory-sensitive caches that should hold objects when memory is sufficient.
+Large data objects that you’d like to reuse when feasible but can discard if necessary
+When to Use: Use soft references to cache expensive-to-recreate data, offering a good balance between retention and memory resilience.
+
+3. Weak References — For Short-Lived or Auxiliary Tracking
+Definition: Wrap objects in WeakReference, signaling intent that they can be GC’d quickly:
+WeakReference<MyObject> weakRef = new WeakReference<>(new MyObject());
+Garbage Collection Behavior: Weakly referenced objects are collected as soon as there are no strong references. 
+Use Cases:
+WeakHashMap: Automatically removes entries when keys are no longer strongly reachable.
+Event listeners or caching metadata: Avoids memory leaks by not holding onto objects longer than needed. 
+When to Use: Ideal for structures where you don’t want your reference to prevent object cleanup—like canonicalization maps 
+or listeners/observers where cleanup needs to be automatic.
+
+4. Phantom References — Post-GC Cleanup Hooks
+Definition: PhantomReference doesn't allow access to the object (always returns null) and requires a ReferenceQueue:
+PhantomReference<MyObject> phantomRef = new PhantomReference<>(obj, referenceQueue);
+When you create a PhantomReference, you typically register it with a ReferenceQueue. The purpose of this queue is simple: 
+it tells your application exactly when the Java garbage collector has finalized an object and it's ready for cleanup. 
+Without the queue, you’d have no reliable way to know when to perform cleanup tasks—making PhantomReference effectively useless. 
+This is why a PhantomReference without a reference queue is considered pointless—it never gets enqueued, so you'll never know 
+it's time to finalize resources.
+
+What Does isEnqueued() Mean?
+The isEnqueued() method checks whether the reference has been added to the ReferenceQueue. It returns:
+false if the reference hasn't been enqueued yet (i.e., the object isn’t finalized or the GC hasn't processed it).
+true once the garbage collector has marked the object for final cleanup and placed the reference into the queue. 
+You can use this method to periodically check whether it's time to trigger your cleanup logic.
+
+Behind the Scenes
+According to Java’s official documentation:
+When the garbage collector identifies an object as phantom reachable (i.e., no strong, soft, or weak references remain), 
+it enqueues its PhantomReference to the associated ReferenceQueue. 
+This behavior is a powerful alternative to finalize()—it gives you control over cleanup timing and helps you avoid finalize() pitfalls.
+
+| Concept              | Meaning                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| **`ReferenceQueue`** | Receives `PhantomReference` when an object is ready for cleanup.                      |
+| **`isEnqueued()`**   | Returns `true` if the reference has been placed on the queue by the GC.               |
+| **Purpose**          | Enables precise cleanup after GC finalizes an object—without relying on `finalize()`. |
+
+finalize()
+Every Java object inherits a finalize() method from the Object class, which the garbage collector (GC) may invoke once before 
+reclaiming the object’s memory. It’s akin to a destructor in other languages—but Java’s implementation is non-deterministic
+@Override
+protected void finalize() throws Throwable {
+    try {
+        // cleanup logic
+    } finally {
+        super.finalize();
+    }
+}
+Pitfalls of Using finalize()
+1. Unpredictable Execution
+There's no guarantee when—or if—finalize() will be called. The GC may skip it entirely, especially on abrupt termination. 
+2. Performance Penalty
+Objects with finalizers incur extra GC cycles. This slows performance—sometimes dramatically. 
+3. Resource Leak Risks
+Because its timing is uncertain, relying on finalize() for closing critical resources (like file or DB connections) often results in resource leaks. 
+4. Exception Silencing
+If finalize() throws an exception, it's silently swallowed and not propagated or logged. 
+5. Subclassing Hazards
+Subclasses that override finalize() must call super.finalize() explicitly. 
+Failing to do so breaks the cleanup chain; this is easy to overlook
+6. Possible Object Resurrection
+finalize() may accidentally resurrect objects, bringing them back into a reachable state—adding unintended complexity. 
+7. Deprecated and Future Removal
+As of Java 9, finalize() is deprecated; Java 18 will remove it altogether (via JEP 421).
+
+| Alternative                         | Description                                                                                               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Try-With-Resources**              | Auto-closes resources in a reliable, clean, and concise way. ([Java Tech Blog][1])                        |
+| **Explicit Cleanup Methods**        | Use `.close()` or `dispose()`, called in `finally` blocks to ensure timely cleanup. ([Java Tech Blog][1]) |
+| **`Cleaner` or `PhantomReference`** | Preferred for complex finalization logic in modern Java (9+). ([GeeksforGeeks][2], [JAVAJEE.COM][3])      |
+
+Difference between Class.forName() and ClassLoader.loadClass()
+1. Class Initialization Behavior
+Class.forName("SomeClass")
+Loads and initializes the class—it executes static initializers immediately.
+For example, if you have:
+class A {
+    static { System.out.println("A initialized!"); }
+}
+Class.forName("A");  // o/p: A initialized!
+ClassLoader.loadClass("SomeClass")
+Only loads the class definition—it does not initialize it.
+ Static blocks won’t run until the class is used (e.g., via instantiation or reflection).
+ClassLoader.getSystemClassLoader().loadClass("A"); // o/p : nothing prints
+2. ClassLoader Used
+Class.forName(String)
+Internally delegates to using the class loader of the calling class
+Class.forName(className, true, currentLoader)
+ClassLoader.loadClass(String)
+Uses the explicit ClassLoader instance you invoke it on, 
+such as Thread.currentThread().getContextClassLoader() or getSystemClassLoader()
+3. Special Case: Array Classes
+ClassLoader.loadClass(...) cannot load array class names like "[Ljava.lang.String;".
+Whereas Class.forName() can—it handles array names properly via the JVM.
+
 -----------------------------------------------------------------------------------------------------------------------------
 Java’s memory model divides memory into several key areas:
 1. Stack

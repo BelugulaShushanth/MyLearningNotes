@@ -1,0 +1,125 @@
+Spring Data JPA
+@Entity — Marks a class as a JPA entity. 
+@Id — Defines a field as the primary key. 
+@GeneratedValue — Specifies primary key generation strategy. 
+@Table, @Column — Configure table and column mappings. 
+@Transient — Marks a field as non-persistent. 
+@ManyToOne, @OneToOne, @OneToMany, @ManyToMany, @JoinColumn, @JoinTable — Define entity relationships. 
+@Query, @Modifying, @Procedure, @Lock, @Param — Custom query methods and behavior. 
+@NoRepositoryBean — Prevents Spring from instantiating intermediate repository interfaces. 
+@EnableJpaRepositories — Enables JPA repository scanning. 
+@CreatedDate, @LastModifiedDate, @CreatedBy, @LastModifiedBy — Auditing fields auto-populated by Spring Data.
+
+Core Repository Interfaces & Their Purpose
+1. Repository (Marker Interface)
+This is the foundational marker interface in the Spring Data repository hierarchy. It doesn’t define any methods but 
+signals to Spring that the interface should be treated as a repository and that implementations should be generated at runtime
+2. CrudRepository
+Extends Repository and adds basic CRUD operations: save, findById, findAll, count, delete, existsById
+3. PagingAndSortingRepository
+Extends CrudRepository, adding pagination and sorting capabilities with methods like findAll(Pageable) and findAll(Sort)
+4. JpaRepository
+The most feature-rich of the standard JPA-oriented repositories.
+Extends both PagingAndSortingRepository and CrudRepository, and adds JPA-specific operations 
+like flush(), saveAndFlush(), and deleteInBatch().
+Provides full CRUD, pagination, sorting, and batch operations bundled together. A Stack Overflow answer summarized:
+
+Spring boot annotations
+@SpringBootApplication — Combines @Configuration, @EnableAutoConfiguration, and @ComponentScan. 
+@EnableAutoConfiguration — Enables automatic configuration based on classpath dependencies. 
+@ConfigurationProperties — Binds external properties to a Java class. 
+@EnableCaching, @EnableScheduling, @EnableTransactionManagement — Enable respective features (caching, scheduled tasks, transaction management). 
+@Async — Marks method for asynchronous execution. 
+@Cacheable, @CachePut, @CacheEvict — Cache control annotations. 
+@Scheduled — Schedules methods to run periodically. 
+@Transactional — Db transaction management on beans or methods. 
+@ConditionalOnProperty — Conditionally loads beans based on config props. 
+@Service
+@ConditionalOnProperty(name = "app.feature.new", havingValue = "false", matchIfMissing = true)
+name / value: The property key(s) to evaluate.
+prefix: A prefix appended to name to form the full property key.
+havingValue: Specifies the exact value the property must match.
+matchIfMissing: If true, the condition matches even if the property is absent
+public class PostgreSessionService implements WebSessionService { /*...*/ }
+@Service
+@ConditionalOnProperty(name = "app.feature.new", havingValue = "true")
+public class RedisSessionService implements WebSessionService { /*...*/ }
+
+@RepositoryRestResource — Customizes endpoint paths in Spring Data REST. 
+@SpringBootTest, @WebMvcTest, @DataJpaTest — Specialized test configurations.
+
+Cache in Spring Boot:
+Add @EnableCaching to a Spring Boot configuration class to activate Spring’s cache abstraction:
+@Cacheable
+Marks a method whose result should be cached. If the same arguments are used again, the cached result is returned without
+ method execution. 
+ @Cacheable("books")
+public Book findBook(String isbn) {
+    // Simulate slow database call
+    return bookRepo.findByIsbn(isbn);
+}
+@CachePut
+Always runs the method and updates the cache with its return value—useful when you update data.
+@CachePut(cacheNames = "books", key = "#isbn")
+public Book updateBook(String isbn, Book newInfo) {
+    return bookRepo.update(isbn, newInfo);
+}
+@CacheEvict
+@CacheEvict does not reload cache by itself. Rather, it removes (evicts) entries from the cache—letting 
+future method calls populate fresh values, if annotated accordingly.
+Evicts entries from the cache. Options:
+key="..." to target a specific entry
+allEntries=true to clear the entire cache
+@CacheEvict(cacheNames = "books", allEntries = true)
+public void reloadBooks() {
+    // reload logic
+}
+
+Cache Providers: Do You Need Third‑Party Libraries?
+Spring Boot includes a simple in-memory (ConcurrentHashMap) cache manager with spring-boot-starter-cache, 
+which works instantly but is not for production 
+For production-grade caching, add a provider like Ehcache, Hazelcast, Caffeine, Redis, or Infinispan. For example:
+
+@EnableTransactionManagement?
+@EnableTransactionManagement activates Spring’s annotation-driven transaction management, 
+providing a declarative approach to handling transactions via @Transactional. It's the Java-based alternative to XML’s
+Spring Boot Convenience
+In most Spring Boot applications, explicit use of @EnableTransactionManagement isn’t required because auto-configuration handles 
+it when it detects Spring Data or transaction dependencies.
+
+Async in Spring Boot:
+What Is @Async?
+The @Async annotation in Spring enables methods to run asynchronously—on separate threads—so the caller can continue executing 
+without waiting for the method to complete. It’s ideal for handling long-running tasks like file processing, external API calls, 
+or email notifications. 
+Add @EnableAsync
+Add this annotation to a configuration class to activate async processing:
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+    // optional executor bean
+}
+Use @Async on Methods
+@Service
+public class MyService {
+    @Async
+    public void process() {
+        // Runs asynchronously
+    }
+}
+Configure Thread Pool (Optional but Recommended)
+@Configuration
+@EnableAsync
+public class AsyncConfig implements AsyncConfigurer {
+    @Override
+    public Executor getAsyncExecutor() {
+        ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
+        exec.setCorePoolSize(5);
+        exec.setMaxPoolSize(10);
+        exec.setQueueCapacity(100);
+        exec.setThreadNamePrefix("Async-");
+        exec.initialize();
+        return exec;
+    }
+}
+

@@ -1,0 +1,87 @@
+Core Concepts & Architecture
+Authentication: Verifying user identity via mechanisms like form login, HTTP basic, LDAP, custom auth providers. 
+Focus on AuthenticationManager, AuthenticationProvider, and UserDetailsService flow 
+Authorization: Controlling access via roles, permissions, URL or method rules, using annotations like @PreAuthorize, 
+and through web configuration (e.g., requestMatchers()) or ACLs 
+GrantedAuthority & Role Hierarchies: Understand how authorities (e.g., ROLE_ADMIN) are granted and how role hierarchies 
+simplify permission structure 
+Security Context: SecurityContextHolder, Authentication, and the context lifecycle during requests 
+Servlet Filters & Filter Chain Architecture:
+DelegatingFilterProxy, FilterChainProxy, and SecurityFilterChain.
+Custom filter insertion and filter chain control 
+
+Authentication Mechanisms
+Password Encoding: Use PasswordEncoder (e.g., BCrypt) to securely store passwords 
+In-Memory, JDBC, LDAP, OAuth2, OpenID Connect: Know when and how to use each based on your app’s context 
+Remember-Me: Implement persistent login via secure cookie or token stored in DB 
+JWT-Based Authentication: Stateless API auth using JSON Web Tokens 
+
+Authorization Techniques
+Web-Level Security: URL-based access control using ant matchers or request matchers 
+Method-Level Security:
+Annotations: @PreAuthorize, @PostAuthorize, @Secured, @RolesAllowed, @PreFilter, @PostFilter, @AuthenticationPrincipal, @RoleHierarchy 
+Expression-Based Access Control: Use Spring EL expressions (hasRole, permitAll, isAnonymous(), etc.) in security configs 
+ACLs & Custom Access: Track finer-grained permissions beyond roles—e.g., per resource-level access control. Spring supports ACL patterns
+ 
+Advanced Protection & Management
+CSRF Protection: Built-in protection via CSRF filters (especially for state-changing endpoints) 
+Session Management:
+Techniques like session fixation protection, concurrent session control, invalidation upon logout 
+CORS Configuration: Understand and configure cross-origin resource sharing securely (via @CrossOrigin or global WebMvcConfigurer) 
+Exception Handling: Customizing security error responses and exception flow in filter chains 
+
+Integrations & Extensions
+OAuth2 & SSO Integration: Configure social logins or external identity providers using OAuth2/OIDC handlers (oauth2Login()) 
+JWT + OAuth2: Use OAuth2 for permission granting and JWT for stateless authentication in APIs 
+MFA (Two-Factor Authentication): Enhance security by integrating second-factor authentication—SMS, email, or hardware 
+Security Logging & Event Monitoring: Capture authentication, authorization events for audit and SIEM integration 
+-------------------------------------------------------------------------------------------------------------------
+
+Core Concepts & Architecture
+Authentication
+
+AuthenticationManager,AuthenticationProvider,UserDetailsService
+User submits login credentials (e.g. via form or HTTP Basic).
+Security filter constructs an Authentication request and forwards it to AuthenticationManager.
+ProviderManager (the default AuthenticationManager):
+Iterates through its AuthenticationProvider list.
+For each provider:
+Attempts authentication.
+If it succeeds, returns a populated Authentication.
+If not, moves to the next provider.
+DaoAuthenticationProvider (common provider):
+Uses UserDetailsService to get user info.
+Compares passwords with PasswordEncoder.
+Creates final Authentication on success.
+A successful authentication is stored in SecurityContextHolder, allowing user access.
+
+Servlet Filter Basics & Filter Chain
+In the Servlet API, a Filter processes incoming HttpServletRequest and HttpServletResponse, 
+either modifying them, blocking further processing, or delegating control via:
+chain.doFilter(request, response);
+The order of filters is critical, as each filter can affect downstream filters or the final Servlet (e.g., DispatcherServlet in Spring MVC)
+
+DelegatingFilterProxy — Bridging Spring Beans with Servlet Filters
+The DelegatingFilterProxy is a standard servlet filter that delegates its actions to a Spring-managed bean implementing 
+the javax.servlet.Filter interface. This allows you to write your filter logic as a Spring bean—making full use of dependency 
+injection, lifecycle hooks, and configuration options. Here's how it fits in:
+In web.xml or Java config: You declare the DelegatingFilterProxy.
+In the Spring context: You define the actual filter bean with the same name.
+When a request arrives, the proxy “delegates” the filter call to that Spring bean. 
+This mechanism is foundational to Spring Security, which uses it to connect the servlet filter chain (e.g., springSecurityFilterChain)
+ to the Spring application context. 
+public class AppInitializer implements WebApplicationInitializer {
+    @Override
+    public void onStartup(ServletContext servletContext) {
+        DelegatingFilterProxy delegatingFilter = new DelegatingFilterProxy("myCustomFilter");
+        servletContext.addFilter("myCustomFilter", delegatingFilter)
+                      .addMappingForUrlPatterns(null, false, "/*");
+    }
+}
+@Configuration
+public class AppConfig {
+    @Bean
+    public Filter myCustomFilter() {
+        return new MyCustomFilter();
+    }
+}
