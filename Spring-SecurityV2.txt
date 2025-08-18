@@ -85,3 +85,328 @@ public class AppConfig {
         return new MyCustomFilter();
     }
 }
+DelegatingFilterProxy (servlet side) → FilterChainProxy (Spring context filter) → picks & runs the appropriate SecurityFilterChain.
+
+------------------------------------------------------------------------------------------------------------------------------------
+OncePerRequestFilter
+What Is OncePerRequestFilter?
+OncePerRequestFilter is a Spring-provided abstract base class that ensures a filter is executed exactly once per HTTP request, 
+regardless of any internal dispatches within the application lifecycle
+Why is this important?
+Without it, a filter might unintentionally run multiple times for one request—for example:
+When a request is forwarded or dispatched internally,
+Or during asynchronous processing (e.g., Servlet 3.0 ASYNC dispatch),
+Or if the filter is accidentally included more than once in the chain.
+This can lead to unintended behaviors such as duplicated authentication, logging, or side effects.
+
+Common Use Case in Spring Security
+In Spring Security, OncePerRequestFilter is frequently used for filters that:
+Authenticate requests (e.g., JWT tokens),
+Set security context,
+Perform idempotent checks or modifications.
+“OncePerRequestFilter makes sure … this authentication process happens only once.”
+
+| Concept                  | Purpose                                                               |
+| ------------------------ | --------------------------------------------------------------------- |
+| **OncePerRequestFilter** | Ensures filter executes only once per HTTP request.([Home][1])        |
+| `doFilterInternal()`     | Where custom filter logic (e.g., JWT handling) goes.                  |
+| `shouldNotFilter()`      | Allows skipping filter for certain URLs (e.g., login, health checks). |
+| **Use Case in Security** | Avoid duplicated authentication, maintain security context once.      |
+-------------------------------------------------------------------------------------------------------------------------------------
+JWT(JSON Web Token)
+A JSON Web Token (JWT) is an open standard (RFC 7519) representing a compact, self-contained way for securely transmitting information 
+as a JSON object. It’s digitally signed, protecting against tampering. You can sign it using a secret (HMAC) or an asymmetric key pair 
+(RSA, ECDSA)
+
+| Section       | Description                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Header**    | Typically includes `"alg"` (algorithm) and `"typ": "JWT"`.                                                        |
+| **Payload**   | Contains claims (e.g., `sub`, `exp`, `iat`, and custom data).                                                     |
+| **Signature** | Created from the header and payload using the secret/private key ([JSON Web Tokens - jwt.io][1], [Wikipedia][2]). |
+
+Once generated, the JWT is sent to the client, often included in the Authorization header as:
+Authorization: Bearer <token>
+The server can then verify the signature and integrity without querying a session store—making it stateless and scalable
+
+Sample JWT:
+RAW JWT
+{
+  "alg": "HS256",    // header
+  "typ": "JWT"
+}
+{
+  "sub": "1234567890",  // body
+  "name": "John Doe",
+  "admin": true,
+  "iat": 1516239022
+}
+HMACSHA256(
+  base64UrlEncode(header) + "." + base64UrlEncode(payload),   //signature
+  secret
+)
+Encoded JWT:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+.
+eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0
+.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+separated by dot(.)
+
+Decode & Verify
+You can decode each component using Base64Url decoders (e.g., at jwt.io) to reveal human-readable JSON.
+Verify the token by re-signing the header and payload with the same secret and comparing with the signature—if they match, 
+token integrity is confirmed
+
+| Component     | Content                                                                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**    | `{ "alg": "HS256", "typ": "JWT" }` → `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9`                                                                                                     |
+| **Payload**   | `{ "sub": "1234567890", "name": "John Doe", "admin": true, "iat": 1516239022 }` → `eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0` |
+| **Signature** | HMAC-SHA256 of header + "." + payload using a secret → `SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c`                                                                            |
+
+Client logs in → receives JWT
+Client includes JWT in the Authorization header → Every API request includes it
+Server validates the token → Grants access if the token is valid and not expire
+
+What the Server Uses from the First Request to Generate a JWT
+1. User Credentials (Request Body)
+On the initial login request, the client sends credentials—typically a username and password—within the request body, such as:
+{
+  "username": "john.doe",
+  "password": "secret123"
+}
+This is how the server knows the identity of the user.
+
+2. Server-Side Validation
+The server validates these credentials by:
+Checking the username exists.
+Verifying the password matches (usually by comparing hashed versions in a database).
+Once validated, the server proceeds to generate the JWT. In other words, the token is generated after credential verification
+
+3. Token Creation (Payload Claims)
+Using library logic (e.g., using JJWT or Nimbus), the server creates a JWT whose payload (claims) generally includes:
+Subject (sub): Typically the user identifier (like username or user ID).
+Issued-at (iat): When the token was issued.
+Expiration (exp): When the token expires.
+Additional claims: Such as user roles, email, or permissions.
+Ex:
+String token = Jwts.builder()
+    .setSubject(user.getUsername())
+    .claim("roles", user.getRoles())
+    .setIssuedAt(new Date())
+    .setExpiration(new Date(System.currentTimeMillis() + TOKEN_VALIDITY))
+    .signWith(secretKey, SignatureAlgorithm.HS256)
+    .compact();
+	
+4. Response Back to Client
+Finally, the generated JWT is returned to the client—often in the response body or header. For example:
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"
+}
+
+
+Implementing JWT with Spring Boot + Spring Security
+Here’s a practical breakdown using Spring Security's WebSecurityConfigurerAdapter (Spring Boot 2 approach):
+1. Security Configuration
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class WebSecurityConfig {
+
+    private static final String[] WHITELIST = { "/auth/**" };
+
+    @Autowired private UserDetailsService userDetailsService;
+    @Autowired private JwtAuthenticationFilter jwtAuthFilter;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+          .cors(AbstractHttpConfigurer::disable)
+          .csrf(AbstractHttpConfigurer::disable)
+          .authorizeHttpRequests(auth -> auth
+              .requestMatchers(WHITELIST).permitAll()
+              .anyRequest().authenticated())
+          .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+          .authenticationProvider(authenticationProvider())
+          .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(new BCryptPasswordEncoder());
+        return provider;
+    }
+}
+
+2.
+@Component
+public class JwtTokenService {
+    private final String secretKey = "..."; // base64 encoded
+    private static final long VALIDITY = 5 * 60 * 60 * 1000; // e.g., 5h
+
+    public String generateToken(String username, Set<Role> roles) {
+        return Jwts.builder()
+            .setSubject(username)
+            .claim("roles", roles)
+            .issuedAt(new Date())
+            .expiration(new Date(System.currentTimeMillis() + VALIDITY))
+            .issuer("your-app")
+            .signWith(getSecretKey(), SignatureAlgorithm.HS512)
+            .compact();
+    }
+
+    public String extractUsername(String token) {
+        return getClaims(token, Claims::getSubject);
+    }
+
+    public boolean isTokenExpired(String token) {
+        return getClaims(token, Claims::getExpiration).before(new Date());
+    }
+
+    public <T> T getClaims(String token, Function<Claims, T> resolver) {
+        return resolver.apply(Jwts.parserBuilder()
+            .setSigningKey(getSecretKey())
+            .build()
+            .parseClaimsJws(token)
+            .getBody());
+    }
+
+    private SecretKey getSecretKey() {
+        byte[] bytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(bytes);
+    }
+}
+3.
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    @Autowired private UserDetailsService userDetailsService;
+    @Autowired private JwtTokenService jwtTokenService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+        throws ServletException, IOException {
+
+        String header = req.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
+            String username = jwtTokenService.extractUsername(token);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (!jwtTokenService.isTokenExpired(token)) {
+                    var authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+        }
+
+        chain.doFilter(req, res);
+    }
+}
+4.
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @Autowired private UserServiceImpl userService;
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody LoginDto dto) {
+        String token = userService.login(dto);  
+        return ResponseEntity.ok(token);
+    }
+}
+Delegates login logic to UserService which authenticates the user and generates a JWT token
+5.
+@RestController
+@RequestMapping("/user")
+public class UserController {
+
+    @Autowired private UserServiceImpl userService;
+
+    @GetMapping
+    public ResponseEntity<User> getProfile() {
+        return ResponseEntity.ok(userService.getUser());
+    }
+}
+Accessible only when a valid JWT is presented
+
+------------------------------------------------------------------------------------------------------------------------------
+Core Method-Level Security Annotations (Spring Security)
+Spring Security provides various annotations to declaratively control access to methods and controllers. 
+These require enabling method-level security, typically via @EnableMethodSecurity (replacing the older @EnableGlobalMethodSecurity).
+1. @Secured
+Purpose: Restrict access based on roles.
+Usage:
+@Secured({"ROLE_ADMIN", "ROLE_USER"})
+public void someMethod() { ... }
+2. @RolesAllowed
+Purpose: Role-based access, JSR-250 standard.
+Usage:
+@RolesAllowed("ROLE_ADMIN")
+public void deleteCourse(Long courseId) { ... }
+Similar to @Secured, albeit standardized.
+3. @PreAuthorize
+Purpose: Applies access control before method execution via SpEL.
+Usage:
+@PreAuthorize("hasRole('ROLE_ADMIN') and #id == authentication.principal.id")
+public void modify(Long id) { ... }
+Flexible and powerful, suitable for complex conditions
+4. @PostAuthorize
+Purpose: Checks conditions after method execution.
+Usage:
+@PostAuthorize("returnObject.owner == authentication.name")
+public Document getDocument(Long id) { ... }
+Ideal for examining returned values or combined logic.
+5. @PreFilter
+Purpose: Filters input collections before method processing.
+Usage:
+@PreFilter("hasPermission(filterObject, 'read')")
+public void deleteCourses(List<Course> courses) { ... }
+6. @PostFilter
+Purpose: Filters results after method execution.
+Usage:
+@PostFilter("filterObject.owner == authentication.name")
+public List<Class> getClasses() { ... }
+7. @AuthenticationPrincipal
+Purpose: Inject the authenticated principal directly into method arguments.
+Usage:
+@GetMapping("/user")
+public String currentUser(@AuthenticationPrincipal UserDetails user) {
+    return user.getUsername();
+}
+
+Enabling Method Security
+To use the above annotations, method-level security must be enabled in your configuration:
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true, securedEnabled = true, jsr250Enabled = true)
+public class SecurityConfig {
+    // Security configuration (beans, SecurityFilterChain, etc.)
+}
+
+prePostEnabled = true → Enables @PreAuthorize / @PostAuthorize
+securedEnabled = true → Enables @Secured
+jsr250Enabled = true → Enables @RolesAllowed
+
+---------------------------------------------------------------------------------------------------------------------------------
+CORS (Cross-Origin Resource Sharing)
+The Same-Origin Policy (SOP)
+Web browsers enforce a strict Same-Origin Policy, meaning a web page can only interact with resources (e.g., APIs) from the same origin—same protocol, host, and port. This prevents malicious cross-site actions.
+
+
+Why CORS?
+Modern web apps often separate their frontend and backend, leading to cross-origin requests (e.g., frontend.example.com ↔ api.example.com). Without CORS, browsers block these calls by default—even though they are often necessary.
+CORS provides a controlled mechanism to relax SOP securely.
+
+How CORS Works: Mechanism & Headers
+Request Flow
+Browser adds the Origin header to the request, indicating where the request originates.
+Server responds with appropriate CORS headers to authorize the request.
+Browser enforces the response—only allowing the API data if headers align with policies.

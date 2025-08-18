@@ -438,7 +438,7 @@ Where will we look for the logs from all 5 Mircoservices...
 this is where Distributed Tracing Comes into picture
 
 What is Distributed Tracing:
-Distributed is tracing is having a centralized information of logs of all microservices
+Distributed tracing is having a centralized information of logs of all microservices
 
 We can acheive Distributed tracing using a)Spring Cloud Sleuth and b)Zipkin  -> Combined
 
@@ -462,3 +462,222 @@ Spring Cloud Bus links nodes of a distributed system with a lightweight message 
 This can then be used to broadcast state changes (e.g. configuration changes) or other management instructions.
 AMQP and Kafka broker implementations are included with the project. 
 Alternatively, any Spring Cloud Stream binder found on the classpath will work out of the box as a transport.
+
+Saga Design Pattern
+The Saga pattern is designed to manage distributed transactions across multiple microservices by breaking the process into local 
+transactions, each paired with a compensating transaction in case something fails. It ensurThere are two main approaches:
+Choreography-based Saga:
+Services publish events and react to them autonomously, forming a chain of reactions. No central coordinator.
+Orchestration-based Saga:
+A Saga orchestrator centrally controls the transaction, telling each service what to do next consistency without relying on 
+traditional, monolithic ACID transactions—which don't scale well across services
+
+Real-Time Spring Cloud Implementation: Choreography Approach
+Let's walk through a simplified e-commerce order saga using Spring Cloud Stream and Kafka (or RabbitMQ)—demonstrated
+Components Involved
+
+1.Order Service: Initiates order creation.
+2.Inventory Service: Reserves items based on the order.
+3.Payment Service: Processes payment.
+
+1.Order Creation
+Order Service saves the order and publishes an OrderCreatedEvent.
+
+2.Reserve Inventory
+Inventory Service listens for OrderCreatedEvent, tries to reserve stock, and emits InventoryUpdatedEvent 
+or InventoryCreationFailedEvent.
+
+3.Process Payment
+Payment Service listens for a successful inventory update, processes payment, then emits PaymentProcessedEvent or PaymentFailedEvent.
+
+4.Finalize or Compensate
+Order Service listens for these events:
+On PaymentProcessedEvent, it marks the order as COMPLETED.
+On failure events, it triggers compensation (e.g., OrderCancelled) and rolls back.
+
+Alternative: Orchestration-Based Saga with Spring Boot & ActiveMQ
+In JackyNote’s example, a Saga Orchestrator handles coordination between Booking and Payment services using ActiveMQ:
+Booking Service saves the booking and sends a message.
+
+Saga Orchestrator receives booking event:
+If payment succeeds: confirm booking.
+If payment fails: cancel booking and payment as compensation.
+This illustrates centralized control with explicit compensation handling.
+
+Why Saga Works in Microservices
+Avoids blocking locks inherent in 2PC by executing independent local transactions.
+Uses compensations to rollback failed steps instead of ACID rollback.
+Ensures eventual consistency across services
+
+CQRS (Command Query Responsibility Segregation) patterns
+What Is CQRS?
+CQRS is an architectural pattern that separates the operations that modify data (commands) from those that read data (queries) 
+each handled by distinct models and data stores. 
+
+Command Side (Write Model): Handles create, update, delete operations. Optimized for consistency and business logic.
+Query Side (Read Model): Optimized for fast, complex reads. Often uses denormalized views or caches.
+Synchronization: After a write, events are published (e.g., via Kafka), consumed by the query side to update its store, 
+ensuring eventual consistency
+
+Why Use CQRS?
+Scalability: Read and write sides scale independently. 
+Performance Optimization: Use separate data stores tailored for commands vs. queries.
+Simplified Logic: Isolates concerns; read logic doesn't have to deal with write semantic
+
+Real-Time Example: E‑Commerce Order Service
+Scenario Overview (Command + Query Services with Kafka)
+Customer updates product price and then places an order.
+Product Command Service updates the price and emits an event.
+Order Command Service updates the order and emits an event.
+Order History Query Service listens to both events and updates its view for fast query responses. 
+
+Flow:
+ProductCommand → DB update → publish ProductUpdatedEvent
+OrderCommand → DB update → publish OrderUpdatedEvent
+Query Service subscribes → updates read-optimized view → used for serving responses
+
+Real-World Use Cases
+Amazon uses CQRS and event sourcing in its order management system to handle massive scaling and maintain audit trails. 
+Netflix captures user interactions as events in its recommendation systems, enabling real-time personalization. 
+Power Grid Monitoring uses CQRS with Kafka and Elasticsearch for real-time data ingestion and analytics. 
+
+| Component                | Purpose                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| **Command Service**      | Handles writes—ensures consistency, emits events          |
+| **Query Service**        | Optimized for fast reads—updated asynchronously           |
+| **Broker (e.g. Kafka)**  | Transports events, supports eventual consistency          |
+| **Eventual Consistency** | Queries may lag slightly; acceptable in many applications |
+| **Transactional Outbox** | Ensures atomicity between DB writes and event publishing  |
+| **Use Cases**            | E‑commerce, real-time analytics, recommendation engines   |
+
+--------------------------------------------------------------------------------------------------------------------------
+Different ways to call an external API from Java
+
+1. Core Java Approaches
+Java 8 & Earlier: HttpURLConnection
+Built-in, synchronous, low-level HTTP support via HttpURLConnection.
+Manual handling of streams, HTTP headers, and error conditions. Verbose but does not require external libraries.
+Ideal when you must stick to Java 8 without third-party dependencies.
+
+Java 11+: java.net.http.HttpClient
+Introduced in Java 11 (incubated earlier).
+Supports HTTP/1.1 and HTTP/2, synchronous and asynchronous operations.
+HttpClient client = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder()
+        .uri(URI.create("https://api.example.com/data"))
+        .GET()
+        .build();
+
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+System.out.println(response.body());
+
+// Asynchronously:
+client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+      .thenApply(HttpResponse::body)
+      .thenAccept(System.out::println);
+
+
+2. Popular Third-Party Libraries (All Java Versions)
+
+OkHttp – Powerful, high-performant HTTP client with both sync and async support.
+Retrofit – Built on OkHttp; simplifies API calling with annotated Java interface
+interface ApiService {
+  @GET("posts/{id}")
+  Call<Post> getPost(@Path("id") int id);
+}
+Apache HttpClient – Mature and robust, with advanced features.
+These options offer better ergonomics, modularity, and sometimes declarative style.
+
+3. Spring Framework Methods (Latest)
+a) RestTemplate (Synchronous, legacy but still supported)
+@RestController
+public class ApiController {
+    @Autowired RestTemplate restTemplate;
+
+    @GetMapping("/user")
+    public String getUser() {
+        return restTemplate.getForObject("https://api.example.com/user", String.class);
+    }
+}
+b) WebClient (Reactive, Non-blocking, Recommended)
+As a Spring-managed bean:
+@Configuration
+public class WebClientConfig {
+    @Bean
+    public WebClient webClient(WebClient.Builder builder) {
+        return builder
+          .baseUrl("https://api.example.com")
+          .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+          .build();
+    }
+}
+
+c) Spring's New RestClient
+The RestClient is a modern, synchronous HTTP client introduced in Spring Framework 6.1. It combines:
+The fluent API style of WebClient
+The underlying infrastructure of RestTemplate, including message converters, interceptors, and request factories
+This makes it a powerful alternative to both older synchronous clients and reactive ones.
+
+Creating a RestClient
+You can instantiate RestClient in several ways:
+Default client:
+RestClient restClient = RestClient.create();
+RestClient restClient = RestClient.create("https://example.com");
+RestClient customClient = RestClient.builder()
+    .baseUrl("https://api.example.com")
+    .defaultHeader("Authorization", "Bearer ...")
+    .defaultUriVariables(Map.of("var", "foo"))
+    .requestFactory(new HttpComponentsClientHttpRequestFactory())
+    .requestInterceptor(myInterceptor)
+    .build();
+
+
+d) OpenFeign (Declarative HTTP Client)
+Define interfaces annotated with @FeignClient:
+@FeignClient(name = "shazam-client", url = "https://shazam.p.rapidapi.com")
+public interface ShazamClient {
+    @GetMapping("/search")
+    Map<String, Object> search(
+        @RequestHeader("X-RapidAPI-Host") String host,
+        @RequestHeader("X-RapidAPI-Key") String key,
+        @RequestParam Map<String, String> params);
+}
+@EnableFeignClients
+@SpringBootApplication
+public class App { ... }
+
+| Method                     | Approach Type      | Java Version        | Key Features                                       |
+| -------------------------- | ------------------ | ------------------- | -------------------------------------------------- |
+| `HttpURLConnection`        | Core HTTP          | Java 8+             | Built-in, verbose, synchronous                     |
+| `HttpClient`               | Core HTTP          | Java 11+            | HTTP/2 support, sync & async                       |
+| OkHttp / Retrofit / Apache | External Libraries | Java 8+             | Fluent, modern, flexible                           |
+| `RestTemplate`             | Spring (blocking)  | All Spring versions | Simple, sync, legacy-supported                     |
+| `WebClient`                | Spring (reactive)  | Spring 5+           | Non-blocking, reactive                             |
+| `RestClient`               | Spring (sync)      | Spring Framework 6+ | Fluent sync client, replacement for `RestTemplate` |
+| OpenFeign                  | Spring declarative | Spring Cloud        | Interface-driven, minimal boilerplate              |
+
+
+@EnableFeignClients
+@SpringBootApplication
+public class App { ... }
+
+| Method                     | Approach Type      | Java Version        | Key Features                                       |
+| -------------------------- | ------------------ | ------------------- | -------------------------------------------------- |
+| `HttpURLConnection`        | Core HTTP          | Java 8+             | Built-in, verbose, synchronous                     |
+| `HttpClient`               | Core HTTP          | Java 11+            | HTTP/2 support, sync & async                       |
+| OkHttp / Retrofit / Apache | External Libraries | Java 8+             | Fluent, modern, flexible                           |
+| `RestTemplate`             | Spring (blocking)  | All Spring versions | Simple, sync, legacy-supported                     |
+| `WebClient`                | Spring (reactive)  | Spring 5+           | Non-blocking, reactive                             |
+| `RestClient`               | Spring (sync)      | Spring Framework 6+ | Fluent sync client, replacement for `RestTemplate` |
+| OpenFeign                  | Spring declarative | Spring Cloud        | Interface-driven, minimal boilerplate              |
+
+
+HttpClient vs WebClient
+Java’s HttpClient (java.net.http.HttpClient)
+Introduced in Java 11, part of the Java Standard Library (Java SE). 
+Offers both synchronous and asynchronous HTTP request handling via fluent APIs and CompletableFuture.
+Supports modern features like HTTP/2 and WebSocket natively. 
+Suitable for general Java applications without extra dependencies.
+Spring’s WebClient (org.springframework.web.reactive.function.client.WebClient)
+Introduced in Spring Framework 5 as part of the WebFlux module. 
+Built for non-blocking, reactive programming, leveraging Project Reactor with Mono and Flux. 
